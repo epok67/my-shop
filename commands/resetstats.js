@@ -5,11 +5,11 @@ const path = require('node:path');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('resetstats')
-        .setDescription('!!! PERMANENTLY WIPE ALL STORE DATA !!!'),
+        .setDescription('! PERMANENTLY WIPE ALL STORE DATA !'),
     
     async execute(interaction) {
         // --- REPLACE WITH YOUR DISCORD USER ID ---
-        const OWNER_ID = "YOUR_ID_HERE"; 
+        const OWNER_ID = "1371611239532199956"; 
         
         if (interaction.user.id !== OWNER_ID) {
             return interaction.reply("❌ You do not have permission to do this!");

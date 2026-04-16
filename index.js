@@ -1,4 +1,4 @@
-require("dotenv").config();
+require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, Events } = require("discord.js");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -44,5 +44,5 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// IMPORTANT: This must match the name in your .env file
+// This will now work as long as your .env file has: DISCORD_TOKEN=your_token_here
 client.login(process.env.DISCORD_TOKEN);

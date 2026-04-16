@@ -1,9 +1,10 @@
+require('dotenv').config();
 const fs = require("node:fs");
 const path = require("node:path");
 const { REST, Routes } = require("discord.js");
 
 // Replace these placeholders with your actual values
-const TOKEN = "YOUR_TOKEN_HERE";
+const TOKEN = process.env.MTQ5NDA3OTQ4MzY1NjAxNjAyMg.GcHysI.jJ73kIce8AIcrBTNlRv5H6AnhSejKdkpmveN5c;
 const CLIENT_ID = "1494079483656016022";
 const GUILD_ID = "1278005202712137768";
 

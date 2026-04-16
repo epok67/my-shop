@@ -1,7 +1,8 @@
+require('dotenv').config();
 const { REST, Routes } = require("discord.js");
 
 // Replace these with your actual IDs
-const TOKEN = "YOUR_TOKEN_HERE";
+const TOKEN = process.env.MTQ5NDA3OTQ4MzY1NjAxNjAyMg.GcHysI.jJ73kIce8AIcrBTNlRv5H6AnhSejKdkpmveN5c;
 const CLIENT_ID = "1494079483656016022";
 const GUILD_ID = "1278005202712137768";
 
