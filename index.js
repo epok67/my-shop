@@ -11,7 +11,7 @@ const client = new Client({
         GatewayIntentBits.DirectMessages, 
         GatewayIntentBits.GuildMessages 
     ],
-    partials: [Partials.Channel, Partials.Message] // Needed for DMs
+    partials: [Partials.Channel, Partials.Message] 
 });
 
 client.commands = new Collection();
@@ -33,7 +33,7 @@ for (const file of commandFiles) {
 
 client.once('ready', () => {
     console.log(`🚀 Logged in as ${client.user.tag}!`);
-    // Check LTC every 60 seconds
+    // Run LTC watcher every 60 seconds
     setInterval(() => watchLTC(client), 60000);
 });
 

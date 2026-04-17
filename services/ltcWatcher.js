@@ -8,17 +8,20 @@ const CHANNEL_ID = '1397978290693865512';
 async function watchLTC(client) {
     try {
         const response = await axios.get(`https://api.blockcypher.com/v1/ltc/main/addrs/${LTC_ADDRESS}/full?limit=1`);
-        const txs = response.data.txs;
+        
+        if (!response.data || !response.data.txs || response.data.txs.length === 0) return;
 
-        if (!txs || txs.length === 0) return;
+        const latestTx = response.data.txs[0];
 
-        const latestTx = txs[0];
-        if (latestTx.hash === lastTxHash) return;
-
+        // First run: establish baseline
         if (lastTxHash === null) {
             lastTxHash = latestTx.hash;
+            console.log(`LTC Watcher Active. Baseline set to: ${lastTxHash}`);
             return;
         }
+
+        // No new activity
+        if (latestTx.hash === lastTxHash) return;
 
         lastTxHash = latestTx.hash;
         const channel = await client.channels.fetch(CHANNEL_ID);
@@ -40,7 +43,10 @@ async function watchLTC(client) {
 
         await channel.send({ content: '🔔 **LTC Wallet Activity Detected!**', embeds: [embed] });
     } catch (err) {
-        console.error('LTC Watcher Error:', err.message);
+        // Silent error for connection timeouts
+        if (err.code !== 'ECONNRESET') {
+            console.error('LTC Watcher Sync Error:', err.message);
+        }
     }
 }
 
