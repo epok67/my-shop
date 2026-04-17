@@ -9,7 +9,6 @@ const TransactionSchema = new mongoose.Schema({
 
 const UserStatsSchema = new mongoose.Schema({
     userId: { type: String, unique: true },
-    username: String,
     totalSold: { type: Number, default: 0 },
     totalBought: { type: Number, default: 0 },
     countSold: { type: Number, default: 0 },
