@@ -9,19 +9,20 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply();
 
-        // Get Top 10 for Bought and Sold
+        // Fetch top 10
         const topBought = await UserStats.find().sort({ totalBought: -1 }).limit(10);
         const topSold = await UserStats.find().sort({ totalSold: -1 }).limit(10);
 
+        // Map function to show mentions instead of usernames
         const formatList = (list, key) => 
-            list.map((u, i) => `${i + 1}. **${u.username}** - $${u[key].toFixed(2)}`).join('\n') || 'None';
+            list.map((u, i) => `${i + 1}. <@${u.userId}> - $${u[key].toFixed(2)}`).join('\n') || 'None';
 
         const embed = new EmbedBuilder()
-            .setColor(0xF1C40F) // Gold for leaderboard
+            .setColor(0xF1C40F)
             .setTitle('🏆 Financial Leaderboard')
             .addFields(
-                { name: '🛒 Top Buyers (Most Bought)', value: formatList(topBought, 'totalBought'), inline: true },
-                { name: '💰 Top Sellers (Most Sold)', value: formatList(topSold, 'totalSold'), inline: true }
+                { name: '🛒 Top Spenders (Most Bought)', value: formatList(topBought, 'totalBought'), inline: true },
+                { name: '💰 Top Earners (Most Sold)', value: formatList(topSold, 'totalSold'), inline: true }
             )
             .setTimestamp()
             .setFooter({ text: 'Economy Rankings' });
