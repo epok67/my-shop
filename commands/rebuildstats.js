@@ -4,17 +4,20 @@ const { Transaction, UserStats } = require('../models/Transaction');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('rebuildstats')
-        .setDescription('!!! ADMIN: Migrates all history to Bought and clears Sold !!!'),
+        .setDescription('!!! ADMIN: Rebuilds stats and removes empty users !!!'),
 
     async execute(interaction) {
-        // Replace with your actual Discord User ID
+        // REPLACE WITH YOUR DISCORD ID
         if (interaction.user.id !== '1371611239532199956') {
             return interaction.reply({ content: "❌ Unauthorized.", ephemeral: true });
         }
 
         await interaction.deferReply({ ephemeral: true });
         
+        // 1. Completely wipe the stats collection
         await UserStats.deleteMany({});
+        
+        // 2. Fetch all transaction records
         const allTxs = await Transaction.find({});
         const statsMap = {};
         
@@ -30,20 +33,23 @@ module.exports = {
                 };
             }
             
-            // Migrate history to 'Bought' only
+            // Only aggregate Bought (as requested)
             statsMap[tx.userId].totalBought += tx.amount;
             statsMap[tx.userId].countBought += 1;
             
-            // Explicitly force Sold to 0
-            statsMap[tx.userId].totalSold = 0;
-            statsMap[tx.userId].countSold = 0;
-            
+            // Track highest purchase
             if (tx.amount > statsMap[tx.userId].highestSale) {
                 statsMap[tx.userId].highestSale = tx.amount;
             }
         }
         
-        await UserStats.insertMany(Object.values(statsMap));
-        await interaction.editReply(`✅ Successfully migrated history to 'Bought' and cleared 'Sold' stats.`);
+        // 3. Only save users who actually have a balance > 0
+        const statsArray = Object.values(statsMap).filter(s => s.totalBought > 0 || s.totalSold > 0);
+        
+        if (statsArray.length > 0) {
+            await UserStats.insertMany(statsArray);
+        }
+        
+        await interaction.editReply(`✅ Stats rebuilt. ${statsArray.length} users processed.`);
     }
 };

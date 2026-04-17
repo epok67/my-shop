@@ -9,11 +9,10 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply();
 
-        // Fetch top 10
-        const topBought = await UserStats.find().sort({ totalBought: -1 }).limit(10);
-        const topSold = await UserStats.find().sort({ totalSold: -1 }).limit(10);
+        // Query only users with balances > 0 to avoid empty entries
+        const topBought = await UserStats.find({ totalBought: { $gt: 0 } }).sort({ totalBought: -1 }).limit(10);
+        const topSold = await UserStats.find({ totalSold: { $gt: 0 } }).sort({ totalSold: -1 }).limit(10);
 
-        // Map function to show mentions instead of usernames
         const formatList = (list, key) => 
             list.map((u, i) => `${i + 1}. <@${u.userId}> - $${u[key].toFixed(2)}`).join('\n') || 'None';
 
