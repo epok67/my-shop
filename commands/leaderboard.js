@@ -1,33 +1,31 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const fs = require('node:fs');
-const path = require('node:path');
+const { UserStats } = require('../models/Transaction');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('leaderboard')
-        .setDescription('See the top spenders in the store'),
+        .setDescription('View the top financial performers'),
+
     async execute(interaction) {
-        const filePath = path.join(__dirname, '..', 'data', 'transactions.json');
-        const { transactions } = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        await interaction.deferReply();
 
-        // Group by buyerId and sum amounts
-        const totals = {};
-        transactions.forEach(t => {
-            totals[t.buyerTag] = (totals[t.buyerTag] || 0) + t.amount;
-        });
+        // Get Top 10 for Bought and Sold
+        const topBought = await UserStats.find().sort({ totalBought: -1 }).limit(10);
+        const topSold = await UserStats.find().sort({ totalSold: -1 }).limit(10);
 
-        // Sort and map to array
-        const sorted = Object.entries(totals)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 10);
-
-        const list = sorted.map((entry, i) => `${i + 1}. **${entry[0]}** - $${entry[1].toFixed(2)}`).join('\n');
+        const formatList = (list, key) => 
+            list.map((u, i) => `${i + 1}. **${u.username}** - $${u[key].toFixed(2)}`).join('\n') || 'None';
 
         const embed = new EmbedBuilder()
-            .setTitle('🏆 Store Leaderboard')
-            .setDescription(list || 'No transactions yet.')
-            .setColor(0xFFD700);
-        
-        await interaction.reply({ embeds: [embed] });
-    },
+            .setColor(0xF1C40F) // Gold for leaderboard
+            .setTitle('🏆 Financial Leaderboard')
+            .addFields(
+                { name: '🛒 Top Buyers (Most Bought)', value: formatList(topBought, 'totalBought'), inline: true },
+                { name: '💰 Top Sellers (Most Sold)', value: formatList(topSold, 'totalSold'), inline: true }
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Economy Rankings' });
+
+        await interaction.editReply({ embeds: [embed] });
+    }
 };
