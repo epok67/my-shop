@@ -1,40 +1,25 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const fs = require('node:fs');
-const path = require('node:path');
+const { UserStats } = require('../models/Transaction');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('View your personal store statistics')
-        .addUserOption(option => option.setName('user').setDescription('User to check')),
-    
+        .setDescription('View transaction stats')
+        .addUserOption(option => option.setName('user').setDescription('User to view')),
+
     async execute(interaction) {
-        const target = interaction.options.getUser('user') || interaction.user;
-        const filePath = path.join(__dirname, '..', 'data', 'transactions.json');
-        const { transactions } = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const user = interaction.options.getUser('user') || interaction.user;
+        const stats = await UserStats.findOne({ userId: user.id });
 
-        const userDeals = transactions.filter(t => t.buyerId === target.id);
-        if (userDeals.length === 0) return interaction.reply(`${target.username} has no store history.`);
-
-        const totalValue = userDeals.reduce((sum, t) => sum + t.amount, 0);
-        const avg = totalValue / userDeals.length;
-        const high = Math.max(...userDeals.map(t => t.amount));
-        const itemsList = userDeals.map(t => t.items).join(', ');
+        if (!stats) return interaction.reply("No purchase history found for this user.");
 
         const embed = new EmbedBuilder()
-            .setColor(0x8A2BE2)
-            .setTitle(`📊 Stats for ${target.username}`)
+            .setTitle(`📊 Stats for ${user.username}`)
             .addFields(
-                { name: 'Total Deals', value: `${userDeals.length}`, inline: true },
-                { name: 'Total Spent', value: `$${totalValue.toFixed(2)}`, inline: true },
-                { name: 'Average Deal', value: `$${avg.toFixed(2)}`, inline: true },
-                { name: 'Highest Deal', value: `$${high.toFixed(2)}`, inline: true },
-                { name: 'Rank', value: userDeals.length > 10 ? 'VIP Customer' : 'Regular', inline: true },
-                { name: 'Account Age', value: 'Active', inline: true },
-                { name: 'Items Purchased', value: itemsList.length > 100 ? itemsList.substring(0, 90) + '...' : itemsList }
-            )
-            .setTimestamp();
-
-        await interaction.reply({ embeds: [embed] });
+                { name: 'Total Spent', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
+                { name: 'Last Item', value: stats.lastPurchaseItem, inline: true },
+                { name: 'Last Purchase Date', value: stats.lastPurchaseDate.toLocaleDateString(), inline: true }
+            );
+        interaction.reply({ embeds: [embed] });
     },
 };
