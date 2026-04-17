@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('crypto'); // Add this for your ID requirement
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -21,8 +22,11 @@ module.exports = {
         const filePath = path.join(__dirname, '..', 'data', 'transactions.json');
         const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
+        // 1. Generate unique ID
+        const txId = crypto.randomBytes(4).toString('hex').toUpperCase();
+
         const newOrder = {
-            id: data.transactions.length + 1,
+            id: txId,
             buyerId: user.id,
             buyerTag: user.tag,
             amount,
@@ -31,7 +35,16 @@ module.exports = {
             timestamp: now.getTime()
         };
 
+        // 2. Update Transactions
         data.transactions.push(newOrder);
+
+        // 3. Update User Stats
+        if (!data.users[user.id]) {
+            data.users[user.id] = { username: user.username, totalSold: 0, count: 0 };
+        }
+        data.users[user.id].totalSold += amount;
+        data.users[user.id].count += 1;
+
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 
         const embed = new EmbedBuilder()
@@ -41,10 +54,10 @@ module.exports = {
             .addFields(
                 { name: '💰 Amount', value: `$${amount.toFixed(2)}`, inline: true },
                 { name: '📦 Items', value: items, inline: true },
-                { name: '🕒 Date', value: newOrder.date }
+                { name: '📊 New Total', value: `$${data.users[user.id].totalSold.toFixed(2)}` }
             )
             .setImage(proof.url)
-            .setFooter({ text: `Order ID: ${newOrder.id}` });
+            .setFooter({ text: `Order ID: ${txId}` });
 
         await interaction.reply({ embeds: [embed] });
     },
