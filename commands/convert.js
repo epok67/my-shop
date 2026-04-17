@@ -4,7 +4,7 @@ const axios = require('axios');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('convert')
-        .setDescription('Convert currency (e.g., 100 USD to EUR)')
+        .setDescription('Convert currency (e.g., 100 USD to CAD)')
         .addNumberOption(o => o.setName('amount').setDescription('Amount to convert').setRequired(true))
         .addStringOption(o => o.setName('from').setDescription('Source currency (e.g. USD)').setRequired(true))
         .addStringOption(o => o.setName('to').setDescription('Target currency (e.g. CAD)').setRequired(true)),
