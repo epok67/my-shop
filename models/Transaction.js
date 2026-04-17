@@ -13,7 +13,9 @@ const UserStatsSchema = new mongoose.Schema({
     userId: { type: String, unique: true },
     username: String,
     totalSold: { type: Number, default: 0 },
-    count: { type: Number, default: 0 }
+    count: { type: Number, default: 0 },
+    lastPurchaseItem: String,
+    lastPurchaseDate: Date
 });
 
 module.exports = {

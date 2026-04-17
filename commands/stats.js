@@ -4,22 +4,28 @@ const { UserStats } = require('../models/Transaction');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('View transaction stats')
-        .addUserOption(option => option.setName('user').setDescription('User to view')),
+        .setDescription('View purchase stats')
+        .addUserOption(option => option.setName('user').setDescription('Optional: User to check')),
 
     async execute(interaction) {
+        await interaction.deferReply();
         const user = interaction.options.getUser('user') || interaction.user;
+        
         const stats = await UserStats.findOne({ userId: user.id });
 
-        if (!stats) return interaction.reply("No purchase history found for this user.");
+        if (!stats) {
+            return interaction.editReply(`No sales data found for **${user.username}**.`);
+        }
 
         const embed = new EmbedBuilder()
-            .setTitle(`📊 Stats for ${user.username}`)
+            .setColor(0x00FF00)
+            .setTitle(`📊 Sales Stats: ${user.username}`)
             .addFields(
-                { name: 'Total Spent', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
-                { name: 'Last Item', value: stats.lastPurchaseItem, inline: true },
-                { name: 'Last Purchase Date', value: stats.lastPurchaseDate.toLocaleDateString(), inline: true }
+                { name: 'Total Revenue', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
+                { name: 'Total Transactions', value: `${stats.count}`, inline: true },
+                { name: 'Latest Item', value: `${stats.lastPurchaseItem || 'N/A'}` }
             );
-        interaction.reply({ embeds: [embed] });
+
+        await interaction.editReply({ embeds: [embed] });
     },
 };
