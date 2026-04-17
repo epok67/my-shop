@@ -1,3 +1,12 @@
+const mongoose = require('mongoose');
+
+// Connect to MongoDB using the variable you set in Railway
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('Connected to MongoDB!'))
+    .catch(err => console.error('DB Connection Error:', err));
+
+const mongoose = require('mongoose');
+mongoose.connect(process.env.MONGO_URI); // You will set this in Railway
 require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, Events } = require("discord.js");
 const fs = require("node:fs");
