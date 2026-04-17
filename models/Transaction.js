@@ -4,6 +4,7 @@ const TransactionSchema = new mongoose.Schema({
     userId: String,
     amount: Number,
     item: String,
+    payment: String, // Ensure this is here
     date: { type: Date, default: Date.now }
 });
 

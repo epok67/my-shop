@@ -1,30 +1,63 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { Transaction } = require('../models/Transaction');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('history')
-        .setDescription('List all transactions for a user')
-        .addUserOption(option => option.setName('user').setDescription('The user').setRequired(true)),
+        .setDescription('View full transaction history for a user')
+        .addUserOption(o => o.setName('user').setDescription('Target user').setRequired(true)),
 
     async execute(interaction) {
-        if (interaction.member.id !== '1278006636375576689' && !interaction.member.roles.cache.has('1278006636375576689')) {
-            return interaction.reply({ content: '❌ Only admins can use this!', ephemeral: true });
-        }
-
+        await interaction.deferReply();
         const user = interaction.options.getUser('user');
-        const allTransactions = await Transaction.find({ buyerId: user.id }).sort({ date: -1 });
+        const txs = await Transaction.find({ userId: user.id }).sort({ date: -1 });
 
-        if (!allTransactions.length) return interaction.reply("No history found.");
+        if (txs.length === 0) return interaction.editReply(`No history found for ${user.username}.`);
 
-        const historyList = allTransactions.map(tx => 
-            `\`${tx.txId}\` | $${tx.amount.toFixed(2)} | ${tx.items}`
-        ).join('\n');
+        const pageSize = 5;
+        const pages = Math.ceil(txs.length / pageSize);
+        let currentPage = 0;
 
-        const embed = new EmbedBuilder()
-            .setTitle(`📜 History: ${user.username}`)
-            .setDescription(historyList.length > 4000 ? historyList.substring(0, 3997) + "..." : historyList);
+        const generateEmbed = (page) => {
+            const start = page * pageSize;
+            const end = start + pageSize;
+            const slice = txs.slice(start, end);
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`📜 Transaction History: ${user.username}`)
+                .setColor(0x5865F2)
+                .setFooter({ text: `Page ${page + 1} of ${pages} | Timezone: EST` });
 
-        await interaction.reply({ embeds: [embed] });
-    },
+            slice.forEach(t => {
+                const estTime = t.date.toLocaleString('en-US', { timeZone: 'America/New_York' });
+                embed.addFields({ 
+                    name: `💰 $${t.amount.toFixed(2)} - ${t.item}`, 
+                    value: `**Method:** ${t.payment || 'N/A'}\n**Date:** ${estTime}` 
+                });
+            });
+            return embed;
+        };
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('prev').setLabel('⬅️ Previous').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('next').setLabel('Next ➡️').setStyle(ButtonStyle.Secondary)
+        );
+
+        const message = await interaction.editReply({ 
+            embeds: [generateEmbed(0)], 
+            components: pages > 1 ? [row] : [] 
+        });
+
+        if (pages > 1) {
+            const collector = message.createMessageComponentCollector({ time: 120000 });
+            collector.on('collect', async i => {
+                if (i.user.id !== interaction.user.id) return i.reply({ content: "Run the command yourself to use the buttons!", ephemeral: true });
+                
+                if (i.customId === 'next' && currentPage < pages - 1) currentPage++;
+                else if (i.customId === 'prev' && currentPage > 0) currentPage--;
+                
+                await i.update({ embeds: [generateEmbed(currentPage)] });
+            });
+        }
+    }
 };

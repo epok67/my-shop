@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { UserStats, Transaction } = require('../models/Transaction');
+const { UserStats } = require('../models/Transaction');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -21,8 +21,9 @@ module.exports = {
             .setTitle(`💼 Financial Dossier: ${target.username}`)
             .setDescription(`**User:** <@${target.id}>`)
             .addFields(
-                { name: '📥 Total Bought', value: `$${stats.totalBought.toFixed(2)}`, inline: true },
-                { name: '📤 Total Sold', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
+                // Data stored in totalSold displays as "Total Bought"
+                { name: '📥 Total Bought', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
+                { name: '📤 Total Sold', value: `$${stats.totalBought.toFixed(2)}`, inline: true },
                 { name: '💎 Peak Performance', value: `Highest Transaction: $${stats.highestSale.toFixed(2)}`, inline: false },
                 { name: '🕒 Recently Purchased', value: `**Item:** ${stats.lastPurchaseItem || 'None'}\n**At (EST):** ${estDate(stats.lastPurchaseDate)}`, inline: false }
             )
