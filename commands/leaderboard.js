@@ -9,9 +9,9 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply();
 
-        // Query only users with balances > 0 to avoid empty entries
-        const topBought = await UserStats.find({ totalBought: { $gt: 0 } }).sort({ totalBought: -1 }).limit(10);
+        // We keep the logic as is, just swapping the names in the embed below
         const topSold = await UserStats.find({ totalSold: { $gt: 0 } }).sort({ totalSold: -1 }).limit(10);
+        const topBought = await UserStats.find({ totalBought: { $gt: 0 } }).sort({ totalBought: -1 }).limit(10);
 
         const formatList = (list, key) => 
             list.map((u, i) => `${i + 1}. <@${u.userId}> - $${u[key].toFixed(2)}`).join('\n') || 'None';
@@ -20,8 +20,9 @@ module.exports = {
             .setColor(0xF1C40F)
             .setTitle('🏆 Financial Leaderboard')
             .addFields(
-                { name: '🛒 Top Spenders (Most Bought)', value: formatList(topBought, 'totalBought'), inline: true },
-                { name: '💰 Top Earners (Most Sold)', value: formatList(topSold, 'totalSold'), inline: true }
+                // SWAPPED LABELS HERE
+                { name: '🛒 Top Spenders (Most Bought)', value: formatList(topSold, 'totalSold'), inline: true },
+                { name: '💰 Top Earners (Most Sold)', value: formatList(topBought, 'totalBought'), inline: true }
             )
             .setTimestamp()
             .setFooter({ text: 'Economy Rankings' });
