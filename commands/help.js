@@ -3,21 +3,17 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('help')
-        .setDescription('List all commands'),
+        .setDescription('List all available commands'),
 
     async execute(interaction) {
         const embed = new EmbedBuilder()
-            .setTitle('🤖 Bot Commands')
-            .setColor(0x8A2BE2)
+            .setTitle('📖 Bot Command Guide')
+            .setColor(0x00AE86)
             .addFields(
-                { name: '/addtransaction', value: 'Record a new deal (Admin Only)' },
-                { name: '/removetransaction', value: 'Delete a transaction by ID (Admin Only)' },
-                { name: '/lookup', value: 'Find a transaction by ID' },
-                { name: '/history', value: 'View full history of a user (Admin Only)' },
-                { name: '/sold', value: 'View total sales/items for a user (Admin Only)' },
-                { name: '/stats', value: 'View purchase stats for a user' },
-                { name: '/help', value: 'List all commands' }
+                { name: '🛍️ Transactions', value: '`/addtransaction`: Log a new sale\n`/history`: View your full purchase list' },
+                { name: '📊 Statistics', value: '`/stats`: Your personal dossier & favorites\n`/leaderboard`: See the top spenders' },
+                { name: '🛠️ Admin', value: '`/removetransaction`: Delete by ID\n`/rebuildstats`: Sync database' }
             );
-        await interaction.reply({ embeds: [embed] });
-    },
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+    }
 };

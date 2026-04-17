@@ -1,33 +1,43 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { UserStats } = require('../models/Transaction');
+const { UserStats, Transaction } = require('../models/Transaction');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('View your financial dossier')
-        .addUserOption(o => o.setName('user').setDescription('Target user').setRequired(false)),
+        .setDescription('View detailed financial stats')
+        .addUserOption(o => o.setName('user').setDescription('Target user')),
 
     async execute(interaction) {
         await interaction.deferReply();
         const target = interaction.options.getUser('user') || interaction.user;
         const stats = await UserStats.findOne({ userId: target.id });
+        const txs = await Transaction.find({ userId: target.id });
 
-        if (!stats) return interaction.editReply(`No records found for ${target.username}.`);
+        if (!stats || txs.length === 0) return interaction.editReply(`No records for ${target.username}.`);
 
+        const getFav = (arr, key) => {
+            const counts = {};
+            arr.forEach(t => {
+                if(t[key]) counts[t[key]] = (counts[t[key]] || 0) + 1;
+            });
+            return Object.keys(counts).length > 0 ? Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) : "N/A";
+        };
+
+        const favItem = getFav(txs, 'item');
+        const favPayment = getFav(txs, 'payment');
         const estDate = (date) => date ? date.toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'Never';
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle(`💼 Financial Dossier: ${target.username}`)
-            .setDescription(`**User:** <@${target.id}>`)
             .addFields(
-                // Data stored in totalSold displays as "Total Bought"
                 { name: '📥 Total Bought', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
-                { name: '📤 Total Sold', value: `$${stats.totalBought.toFixed(2)}`, inline: true },
-                { name: '💎 Peak Performance', value: `Highest Transaction: $${stats.highestSale.toFixed(2)}`, inline: false },
-                { name: '🕒 Recently Purchased', value: `**Item:** ${stats.lastPurchaseItem || 'None'}\n**At (EST):** ${estDate(stats.lastPurchaseDate)}`, inline: false }
+                { name: '💎 Highest Deal', value: `$${stats.highestSale.toFixed(2)}`, inline: true },
+                { name: '✨ Favorite Item', value: `📦 ${favItem}`, inline: false },
+                { name: '💳 Preferred Method', value: favPayment, inline: false },
+                { name: '🕒 Last Transaction', value: `**Item:** ${stats.lastPurchaseItem}\n**Date:** ${estDate(stats.lastPurchaseDate)}`, inline: false }
             )
-            .setFooter({ text: `Report generated: ${estDate(new Date())}` });
+            .setFooter({ text: `Generated: ${estDate(new Date())}` });
 
         await interaction.editReply({ embeds: [embed] });
     }
