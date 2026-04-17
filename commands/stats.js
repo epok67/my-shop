@@ -4,31 +4,40 @@ const { UserStats, Transaction } = require('../models/Transaction');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('View your financial dossier')
-        .addUserOption(o => o.setName('user').setDescription('Check another user (Optional)').setRequired(false)),
+        .setDescription('View your detailed financial dossier')
+        .addUserOption(o => o.setName('user').setDescription('Target user').setRequired(false)),
 
     async execute(interaction) {
         await interaction.deferReply();
         const target = interaction.options.getUser('user') || interaction.user;
         const stats = await UserStats.findOne({ userId: target.id });
 
-        if (!stats) return interaction.editReply(`No financial records found for ${target.username}.`);
+        if (!stats) return interaction.editReply(`No records found for ${target.username}.`);
 
+        // Calculate Monthly Data
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const monthlyTxs = await Transaction.find({ userId: target.id, date: { $gte: thirtyDaysAgo } });
         const monthlySpent = monthlyTxs.reduce((sum, tx) => sum + tx.amount, 0);
 
+        // Calculate "All Time" metrics
+        const totalVolume = stats.totalSold + stats.totalBought;
+        const profitLoss = (stats.totalSold - stats.totalBought).toFixed(2);
+
         const embed = new EmbedBuilder()
-            .setColor(0x7289DA)
-            .setTitle(`💼 Financial Profile: ${target.username}`)
+            .setColor(0x5865F2) // Discord Blurple
+            .setTitle(`💼 Financial Dossier: ${target.username}`)
+            .setDescription(`**User:** <@${target.id}> (${target.username})`)
             .setThumbnail(target.displayAvatarURL())
             .addFields(
-                { name: '📊 Lifetime Performance', value: `Total Sold: $${stats.totalSold.toFixed(2)}\nTotal Bought: $${stats.totalBought.toFixed(2)}`, inline: true },
-                { name: '📅 30-Day Activity', value: `Activity: $${monthlySpent.toFixed(2)}\nTransactions: ${monthlyTxs.length}`, inline: true },
-                { name: '🏆 Milestones', value: `Highest Sale: $${stats.highestSale.toFixed(2)}\nTotal Sales: ${stats.countSold}`, inline: false },
-                { name: '🕒 Recent', value: `Last Item: ${stats.lastPurchaseItem || 'N/A'}\nDate: ${stats.lastPurchaseDate?.toDateString() || 'N/A'}` }
-            );
+                { name: '📥 Total Bought', value: `$${stats.totalBought.toFixed(2)}`, inline: true },
+                { name: '📤 Total Sold', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
+                { name: '⚖️ Net Balance', value: `$${profitLoss}`, inline: true },
+                { name: '📈 Transaction Velocity', value: `Total Lifetime Volume: $${totalVolume.toFixed(2)}\nMonthly Spend: $${monthlySpent.toFixed(2)}`, inline: false },
+                { name: '💎 Peak Performance', value: `Highest Single Transaction: $${stats.highestSale.toFixed(2)}`, inline: false },
+                { name: '🕒 Recently Purchased', value: `**Item:** ${stats.lastPurchaseItem || 'None'}\n**At:** ${stats.lastPurchaseDate ? stats.lastPurchaseDate.toLocaleString() : 'Never'}`, inline: false }
+            )
+            .setFooter({ text: `Dossier generated at: ${new Date().toLocaleString()}` });
 
         await interaction.editReply({ embeds: [embed] });
     }
