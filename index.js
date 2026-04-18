@@ -7,8 +7,6 @@ const path = require('path');
 const dns = require('node:dns');
 dns.setServers(['8.8.8.8', '1.1.1.1']); 
 
-// SAFE MODE: Only using the basic Guild intent. 
-// This fixes the "Disallowed Intents" crash 100% of the time.
 const client = new Client({ 
     intents: [ GatewayIntentBits.Guilds ] 
 });
@@ -28,16 +26,18 @@ for (const file of commandFiles) {
 
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
-    console.log(`📥 [/${interaction.commandName}] called`);
+    
+    console.log(`📥 [/${interaction.commandName}] by ${interaction.user.tag}`);
+
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
 
     try {
         await command.execute(interaction);
     } catch (error) {
-        console.error(`❌ Error:`, error);
+        console.error(`❌ Execution Error:`, error);
         if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: '❌ Error.', ephemeral: true });
+            await interaction.reply({ content: '❌ Error executing command.', ephemeral: true });
         }
     }
 });
