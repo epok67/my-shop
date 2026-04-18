@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 
+// DNS Fix for Railway stability
 const dns = require('node:dns');
 dns.setServers(['8.8.8.8', '1.1.1.1']); 
 
@@ -25,15 +26,16 @@ for (const file of commandFiles) {
     const command = require(filePath);
     if (command.data && command.execute) {
         client.commands.set(command.data.name, command);
-        console.log(`✅ Loaded: ${command.data.name}`);
+        console.log(`✅ Loaded Command: ${command.data.name}`);
     }
 }
 
+// THE CRITICAL PART: This MUST catch the Discord signal
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
     
-    // HEARTBEAT LOG: If this doesn't show up in Railway, Discord isn't talking to the bot.
-    console.log(`📥 [/${interaction.commandName}] called by ${interaction.user.tag}`);
+    // This will print in your Railway logs so you can see if Discord is talking to it
+    console.log(`📥 [/${interaction.commandName}] received from ${interaction.user.tag}`);
 
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -41,7 +43,7 @@ client.on('interactionCreate', async interaction => {
     try {
         await command.execute(interaction);
     } catch (error) {
-        console.error(`❌ Execution Error:`, error);
+        console.error(`❌ Execution Error in /${interaction.commandName}:`, error);
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ content: '❌ Internal Error.', ephemeral: true });
         }
@@ -51,11 +53,15 @@ client.on('interactionCreate', async interaction => {
 async function start() {
     try {
         await mongoose.connect(process.env.MONGO_URI);
-        console.log("🌐 DB Connected");
+        console.log("🌐 MongoDB Connected");
         await client.login(process.env.DISCORD_TOKEN);
-    } catch (err) { console.error("❌ Startup Error:", err); }
+    } catch (err) {
+        console.error("❌ Login Failed:", err);
+    }
 }
 
-// Fixed the deprecation warning by using clientReady
-client.once('clientReady', c => console.log(`🚀 ONLINE: ${c.user.tag}`));
+client.once('clientReady', c => {
+    console.log(`🚀 ONLINE: ${c.user.tag}`);
+});
+
 start();
