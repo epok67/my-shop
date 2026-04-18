@@ -20,54 +20,36 @@ module.exports = {
             }
 
             let rPurchasedUSD = 0, rSoldUSD = 0, rPurchasedRobux = 0, rSoldRobux = 0;
-            let bestTx = { item: 'None', value: 0, isRobux: false };
+            let bestItem = 'None';
+            let highVal = 0;
 
             txs.forEach(t => {
                 const tUSD = t.amountUSD || 0;
                 const tRobux = t.amountRobux || 0;
                 const type = t.type || 'purchase';
 
-                // Calculate Totals
                 if (type === 'purchase') { rPurchasedUSD += tUSD; rPurchasedRobux += tRobux; } 
                 else { rSoldUSD += tUSD; rSoldRobux += tRobux; }
 
-                // Determine "Best Transaction" (Highest single value)
-                if (tUSD > bestTx.value) {
-                    bestTx = { item: t.item, value: tUSD, isRobux: false };
-                } else if (tRobux > bestTx.value && !bestTx.isRobux) {
-                    // Simple logic: If it's a huge Robux deal, it counts as "Best"
-                    bestTx = { item: t.item, value: tRobux, isRobux: true };
+                if (tUSD > highVal || tRobux > highVal) {
+                    highVal = Math.max(tUSD, tRobux);
+                    bestItem = t.item;
                 }
             });
 
-            const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0);
-            const finalSoldUSD = Math.max(rSoldUSD, stats.soldUSD || 0);
-            const finalPurchasedRobux = Math.max(rPurchasedRobux, stats.purchasedRobux || 0);
-            const finalSoldRobux = Math.max(rSoldRobux, stats.soldRobux || 0);
-            
-            const bestDisplay = bestTx.item !== 'None' 
-                ? `📦 **${bestTx.item.toUpperCase()}** (${bestTx.isRobux ? 'R$' : '$'}${bestTx.value.toLocaleString()})` 
-                : '`N/A`';
-
-            const lastTs = txs.length > 0 ? Math.floor(txs[0].date.getTime() / 1000) : null;
-
             const embed = new EmbedBuilder()
-                .setColor(0x5865F2)
-                .setAuthor({ name: `Full Audit: ${target.tag}`, iconURL: target.displayAvatarURL() })
-                .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 1024 }))
-                .setTitle('💼 Comprehensive Financial Overview')
+                .setColor(0x2B2D31)
+                .setAuthor({ name: `${target.tag}'s Financial Audit`, iconURL: target.displayAvatarURL() })
+                .setTitle('📊 Store Performance Profile')
                 .addFields(
-                    { name: '🛒 Total Purchased (USD)', value: `\`$${finalPurchasedUSD.toFixed(2)}\``, inline: true },
-                    { name: '🤝 Total Sold (USD)', value: `\`$${finalSoldUSD.toFixed(2)}\``, inline: true },
+                    { name: '💰 Total USD', value: `Purchased: \`$${rPurchasedUSD.toFixed(2)}\` \nSold: \`$${rSoldUSD.toFixed(2)}\``, inline: true },
+                    { name: '<:Epok_Robux:1394440796211515402> Total Robux', value: `Purchased: \`${rPurchasedRobux.toLocaleString()}\` \nSold: \`${rSoldRobux.toLocaleString()}\``, inline: true },
                     { name: '\u200B', value: '\u200B', inline: true },
-                    { name: '🛒 Total Purchased (R$)', value: `<:Epok_Robux:1394440796211515402> \`${finalPurchasedRobux.toLocaleString()}\``, inline: true },
-                    { name: '🤝 Total Sold (R$)', value: `<:Epok_Robux:1394440796211515402> \`${finalSoldRobux.toLocaleString()}\``, inline: true },
-                    { name: '\u200B', value: '\u200B', inline: true },
-                    { name: '📊 Total Deals', value: `\`${txs.length || stats.countDeals || 0}\` Transactions`, inline: true },
-                    { name: '🏆 Best Transaction', value: bestDisplay, inline: true },
-                    { name: '🕒 Last Transaction', value: lastTs ? `<t:${lastTs}:R>` : 'No records', inline: true }
+                    { name: '🏆 Best Transaction', value: `📦 **${bestItem.toUpperCase()}**`, inline: true },
+                    { name: '📊 Total Deals', value: `\`${txs.length}\` Trades`, inline: true },
+                    { name: '🕒 Last Seen', value: txs[0] ? `<t:${Math.floor(txs[0].date.getTime() / 1000)}:R>` : 'N/A', inline: true }
                 )
-                .setFooter({ text: 'Epok\'s Store Tracking System' });
+                .setFooter({ text: 'Epok\'s Store • Internal Tracking' });
 
             await interaction.editReply({ embeds: [embed] });
         } catch (err) { console.error(err); }

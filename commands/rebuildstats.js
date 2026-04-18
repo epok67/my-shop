@@ -4,52 +4,37 @@ const { Transaction, UserStats } = require('../models/Transaction');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('rebuildstats')
-        .setDescription('!!! ADMIN: Rebuilds stats and removes empty users !!!'),
+        .setDescription('Force recalculate all user statistics from scratch'),
 
     async execute(interaction) {
-        // REPLACE WITH YOUR DISCORD ID
-        if (interaction.user.id !== '1371611239532199956') {
-            return interaction.reply({ content: "❌ Unauthorized.", ephemeral: true });
-        }
-
         await interaction.deferReply({ ephemeral: true });
-        
-        // 1. Completely wipe the stats collection
-        await UserStats.deleteMany({});
-        
-        // 2. Fetch all transaction records
-        const allTxs = await Transaction.find({});
-        const statsMap = {};
-        
-        for (const tx of allTxs) {
-            if (!statsMap[tx.userId]) {
-                statsMap[tx.userId] = { 
-                    userId: tx.userId, 
-                    totalSold: 0, 
-                    totalBought: 0, 
-                    countSold: 0, 
-                    countBought: 0, 
-                    highestSale: 0 
-                };
+        try {
+            await UserStats.deleteMany({}); // Wipe the old summary
+            const allTxs = await Transaction.find({});
+
+            for (const tx of allTxs) {
+                const usd = tx.amountUSD || 0;
+                const robux = tx.amountRobux || 0;
+                const type = tx.type || 'purchase';
+
+                await UserStats.findOneAndUpdate(
+                    { userId: tx.userId },
+                    { 
+                        $inc: { 
+                            purchasedUSD: type === 'purchase' ? usd : 0,
+                            soldUSD: type === 'sale' ? usd : 0,
+                            purchasedRobux: type === 'purchase' ? robux : 0,
+                            soldRobux: type === 'sale' ? robux : 0,
+                            countDeals: 1
+                        }
+                    },
+                    { upsert: true }
+                );
             }
-            
-            // Only aggregate Bought (as requested)
-            statsMap[tx.userId].totalBought += tx.amount;
-            statsMap[tx.userId].countBought += 1;
-            
-            // Track highest purchase
-            if (tx.amount > statsMap[tx.userId].highestSale) {
-                statsMap[tx.userId].highestSale = tx.amount;
-            }
+            await interaction.editReply("✅ All user stats and leaderboards have been rebuilt from transaction history.");
+        } catch (err) {
+            console.error(err);
+            await interaction.editReply("❌ Rebuild failed.");
         }
-        
-        // 3. Only save users who actually have a balance > 0
-        const statsArray = Object.values(statsMap).filter(s => s.totalBought > 0 || s.totalSold > 0);
-        
-        if (statsArray.length > 0) {
-            await UserStats.insertMany(statsArray);
-        }
-        
-        await interaction.editReply(`✅ Stats rebuilt. ${statsArray.length} users processed.`);
     }
 };
