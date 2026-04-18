@@ -61,7 +61,7 @@ module.exports = {
 
             await interaction.editReply({ embeds: [embed] });
         } catch (err) {
-            console.error("Stats Error:", err);
+            console.error(err);
         }
     }
 };
