@@ -16,7 +16,7 @@ const EMOJIS = {
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('addtransaction')
-        .setDescription('Record any deal')
+        .setDescription('Record a deal with high-detail logging')
         .addUserOption(o => o.setName('user').setDescription('Target user').setRequired(true))
         .addStringOption(o => o.setName('type').setDescription('Deal type').setRequired(true)
             .addChoices({ name: 'I Sold (Customer Purchased)', value: 'purchase' }, { name: 'I Bought (Customer Sold)', value: 'sale' }))
@@ -45,7 +45,8 @@ module.exports = {
 
             if (payment === 'Other' && manual) payment = manual;
             
-            const txId = crypto.randomBytes(3).toString('hex').toUpperCase();
+            // Generate the long Order ID (24 characters)
+            const txId = crypto.randomBytes(12).toString('hex');
             const isRobux = payment === 'Robux';
             const usd = isRobux ? 0 : amount;
             const robux = isRobux ? amount : 0;
@@ -58,7 +59,7 @@ module.exports = {
                 { 
                     $inc: { 
                         purchasedUSD: type === 'purchase' ? usd : 0,
-                        soldUSD: type === 'sale' ? usd : 0,
+                        soldUSD: type === 'sale' ? -usd : 0, // Using negative logic for stats balance if needed
                         purchasedRobux: type === 'purchase' ? robux : 0,
                         soldRobux: type === 'sale' ? robux : 0,
                         countDeals: 1
@@ -72,19 +73,34 @@ module.exports = {
             if (logChannel) {
                 const emoji = EMOJIS[payment] || EMOJIS['Other'];
                 const valStr = isRobux ? `${EMOJIS['Robux']} **${amount.toLocaleString()}**` : `**$${amount.toFixed(2)}**`;
+                const typeLabel = type === 'purchase' ? 'OUTGOING (Sale)' : 'INCOMING (Buy)';
+                
                 const embed = new EmbedBuilder()
-                    .setColor(type === 'purchase' ? 0x2ECC71 : 0xE74C3C)
-                    .setTitle(`✅ Transaction [ID: ${txId}]`)
+                    .setColor(type === 'purchase' ? 0x2ECC71 : 0x3498DB)
+                    .setTitle(`📝 New Store Record Generated`)
+                    .setDescription(`**Detailed transaction log for audit purposes.**`)
                     .addFields(
-                        { name: '👤 User', value: `<@${user.id}>`, inline: true },
-                        { name: '📦 Item', value: `**${item}**`, inline: true },
+                        { name: '👤 Target User', value: `${user} (\`${user.id}\`)`, inline: false },
+                        { name: '📦 Item Information', value: `\`${item}\``, inline: true },
                         { name: '💰 Value', value: valStr, inline: true },
-                        { name: '💳 Method', value: `${emoji} **${payment}**`, inline: true }
-                    ).setTimestamp();
+                        { name: '💳 Method', value: `${emoji} **${payment}**`, inline: true },
+                        { name: '🔄 Transaction Type', value: `\`${typeLabel}\``, inline: true },
+                        { name: '🕒 Exact Timestamp', value: `\`${now.toUTCString()}\` (<t:${Math.floor(now.getTime() / 1000)}:R>)`, inline: false },
+                        { name: '🆔 Order ID', value: `\`${txId}\``, inline: false }
+                    )
+                    .setThumbnail(user.displayAvatarURL());
+                
                 if (proof) embed.setImage(proof.url);
-                await logChannel.send({ embeds: [embed] });
+                
+                await logChannel.send({ 
+                    content: `:id: **Order ID**\n\`${txId}\``,
+                    embeds: [embed] 
+                });
             }
-            await interaction.editReply(`✅ Logged as **${txId}**.`);
-        } catch (err) { console.error(err); await interaction.editReply("❌ Error."); }
+            await interaction.editReply(`✅ Transaction logged successfully.\nID: \`${txId}\``);
+        } catch (err) { 
+            console.error(err); 
+            await interaction.editReply("❌ Error logging transaction."); 
+        }
     }
 };
