@@ -24,23 +24,17 @@ module.exports = {
 
             txs.forEach(t => {
                 if (t.item) counts[t.item] = (counts[t.item] || 0) + 1;
-                const tUSD = t.amountUSD || t.amount || 0;
-                const tRobux = t.amountRobux || t.robuxAmount || 0;
+                const tUSD = t.amountUSD || 0;
+                const tRobux = t.amountRobux || 0;
                 const type = t.type || 'purchase';
 
-                if (type === 'purchase') { 
-                    rPurchasedUSD += tUSD; 
-                    rPurchasedRobux += tRobux; 
-                } else { 
-                    rSoldUSD += tUSD; 
-                    rSoldRobux += tRobux; 
-                }
+                if (type === 'purchase') { rPurchasedUSD += tUSD; rPurchasedRobux += tRobux; } 
+                else { rSoldUSD += tUSD; rSoldRobux += tRobux; }
             });
 
-            // Deep merge legacy and new data (The logic you wanted kept)
-            const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0, stats.totalBought || 0);
-            const finalSoldUSD = Math.max(rSoldUSD, stats.soldUSD || 0, stats.totalRevenue || 0);
-            const finalPurchasedRobux = Math.max(rPurchasedRobux, stats.purchasedRobux || 0, stats.totalRobux || 0);
+            const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0);
+            const finalSoldUSD = Math.max(rSoldUSD, stats.soldUSD || 0);
+            const finalPurchasedRobux = Math.max(rPurchasedRobux, stats.purchasedRobux || 0);
             const finalSoldRobux = Math.max(rSoldRobux, stats.soldRobux || 0);
             
             const totalDeals = Math.max(txs.length, stats.countDeals || 0);
@@ -68,15 +62,12 @@ module.exports = {
                     { name: '✨ Favorite Item', value: `📦 **${favItem.toUpperCase()}**`, inline: true },
                     { name: '🕒 Last Transaction', value: lastTs ? `<t:${lastTs}:R>` : 'No records', inline: true }
                 )
-                .setFooter({ text: "Epok's Store Tracking System", iconURL: interaction.guild?.iconURL() });
+                .setFooter({ text: "Epok's Store Tracking System" });
 
             await interaction.editReply({ embeds: [embed] });
-            
         } catch (err) {
-            console.error("Database Error in Stats:", err);
-            if (interaction.deferred) {
-                await interaction.editReply("❌ Database error. Please try again in a moment.");
-            }
+            console.error(err);
+            await interaction.editReply("❌ Database Error.");
         }
     }
 };
