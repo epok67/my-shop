@@ -8,8 +8,10 @@ module.exports = {
         .addStringOption(o => o.setName('message').setDescription('What to say').setRequired(true)),
 
     async execute(interaction) {
-        // Updated to your specific Discord ID
-        if (interaction.user.id !== '459516116465876992') {
+        // Hardcoded your ID from the screenshot logs
+        const ADMIN_ID = '459516116465876992';
+        
+        if (interaction.user.id !== ADMIN_ID) {
             return interaction.reply({ content: '❌ Admin only.', ephemeral: true });
         }
 
