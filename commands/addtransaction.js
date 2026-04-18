@@ -6,7 +6,7 @@ module.exports = {
         .setName('addtransaction')
         .setDescription('Record a transaction')
         .addUserOption(o => o.setName('user').setDescription('The customer').setRequired(true))
-        .addNumberOption(o => o.setName('amount').setDescription('Numerical amount (Enter 67 for $67 or 67 for R$67)').setRequired(true))
+        .addNumberOption(o => o.setName('amount').setDescription('Numerical amount').setRequired(true))
         .addStringOption(o => o.setName('item').setDescription('Item sold').setRequired(true))
         .addStringOption(o => o.setName('payment').setDescription('Payment method').setRequired(true)
             .addChoices(
@@ -24,22 +24,16 @@ module.exports = {
         const item = interaction.options.getString('item').toLowerCase();
         const payment = interaction.options.getString('payment');
         
-        let usdInc = 0;
-        let robuxInc = 0;
-
-        if (payment === 'Robux') {
-            robuxInc = amount;
-        } else {
-            usdInc = amount;
-        }
+        let usdInc = (payment === 'Robux') ? 0 : amount;
+        let robuxInc = (payment === 'Robux') ? amount : 0;
 
         const now = new Date();
-        await Transaction.create({ userId: user.id, amount: usdInc, robuxAmount: robuxInc, item, payment, date: now });
+        const newTx = await Transaction.create({ userId: user.id, amount: usdInc, robuxAmount: robuxInc, item, payment, date: now });
         
         await UserStats.findOneAndUpdate(
             { userId: user.id }, 
             { 
-                $inc: { totalRevenue: usdInc, totalRobux: robuxInc, countSold: 1 }, 
+                $inc: { totalRevenue: usdInc, totalSold: usdInc, totalRobux: robuxInc, countSold: 1 }, 
                 $set: { lastPurchaseItem: item, lastPurchaseDate: now }, 
                 $max: { highestSale: usdInc } 
             }, 
@@ -57,9 +51,10 @@ module.exports = {
                 .setTitle('✅ New Transaction Logged')
                 .addFields(
                     { name: '👤 Customer', value: `<@${user.id}>`, inline: true },
-                    { name: '📦 Item', value: `**${item}**`, inline: true },
+                    { name: '📦 Item', value: `**${item.toUpperCase()}**`, inline: true },
                     { name: '💰 Value', value: displayValue, inline: true },
-                    { name: '💳 Method', value: `**${payment}**`, inline: true }
+                    { name: '💳 Method', value: `**${payment}**`, inline: true },
+                    { name: '🆔 Order ID', value: `\`${newTx._id}\``, inline: false }
                 )
                 .setTimestamp();
 
@@ -67,6 +62,6 @@ module.exports = {
             if (attachment) embed.setImage(attachment.url);
             await logChannel.send({ embeds: [embed] });
         }
-        await interaction.editReply(`✅ Logged ${payment === 'Robux' ? amount + ' Robux' : '$' + amount} for ${user.username}.`);
+        await interaction.editReply(`✅ Successfully logged transaction for ${user.username}.`);
     }
 };
