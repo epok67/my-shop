@@ -4,37 +4,35 @@ const { Transaction, UserStats } = require('../models/Transaction');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('addtransaction')
-        .setDescription('Record a sale')
+        .setDescription('Record a transaction')
         .addUserOption(o => o.setName('user').setDescription('The customer').setRequired(true))
-        .addNumberOption(o => o.setName('amount').setDescription('The USD price').setRequired(true))
-        .addStringOption(o => o.setName('item').setDescription('The item sold').setRequired(true))
-        .addStringOption(o => o.setName('payment').setDescription('Select payment method').setRequired(true)
+        .addNumberOption(o => o.setName('amount').setDescription('Price in USD').setRequired(true))
+        .addStringOption(o => o.setName('item').setDescription('Item sold').setRequired(true))
+        .addStringOption(o => o.setName('payment').setDescription('Payment method').setRequired(true)
             .addChoices(
                 { name: 'PayPal', value: 'PayPal' },
-                { name: 'Litecoin (LTC)', value: 'Litecoin' },
-                { name: 'Robux', value: 'Robux' },
-                { name: 'Other', value: 'Other' }
+                { name: 'Litecoin (LTC)', value: 'LTC' },
+                { name: 'Robux', value: 'Robux' }
             ))
-        .addAttachmentOption(o => o.setName('attachment').setDescription('Attach receipt').setRequired(false)),
+        .addNumberOption(o => o.setName('robux_amount').setDescription('Specify exact Robux if applicable').setRequired(false)),
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user');
-        const amountUSD = interaction.options.getNumber('amount');
+        const usd = interaction.options.getNumber('amount');
         const item = interaction.options.getString('item').toLowerCase();
         const payment = interaction.options.getString('payment');
-        
-        const robuxValue = Math.floor(amountUSD * 1000);
-        const now = new Date();
+        const rValue = interaction.options.getNumber('robux_amount') || (usd * 1000); 
 
-        // Create Database Entry
-        await Transaction.create({ userId: user.id, amount: amountUSD, item, payment, date: now });
+        const now = new Date();
+        await Transaction.create({ userId: user.id, amount: usd, item, payment, date: now, robuxAmount: rValue });
+        
         await UserStats.findOneAndUpdate(
             { userId: user.id }, 
             { 
-                $inc: { totalSold: amountUSD, countSold: 1 }, 
+                $inc: { totalSold: usd, countSold: 1 }, 
                 $set: { lastPurchaseItem: item, lastPurchaseDate: now }, 
-                $max: { highestSale: amountUSD } 
+                $max: { highestSale: usd } 
             }, 
             { upsert: true }
         );
@@ -43,20 +41,16 @@ module.exports = {
         if (logChannel) {
             const embed = new EmbedBuilder()
                 .setColor(0x2ECC71)
-                .setTitle('📢 Sale Logged Successfully')
+                .setTitle('✅ New Transaction Logged')
                 .addFields(
                     { name: '👤 Customer', value: `<@${user.id}>`, inline: true },
-                    { name: '📦 Item', value: item, inline: true },
-                    { name: '💰 USD Price', value: `\`$${amountUSD.toFixed(2)}\``, inline: true },
-                    { name: '🪙 Robux Price', value: `\`R$ ${robuxValue.toLocaleString()}\``, inline: true },
-                    { name: '💳 Method', value: payment, inline: true }
-                )
-                .setTimestamp();
-
-            const attachment = interaction.options.getAttachment('attachment');
-            if (attachment) embed.setImage(attachment.url);
+                    { name: '📦 Item', value: `**${item}**`, inline: true },
+                    { name: '💰 USD Value', value: `\`$${usd.toFixed(2)}\``, inline: true },
+                    { name: '🪙 Robux Total', value: `<:Epok_Robux:1394440796211515402> **${rValue.toLocaleString()}**`, inline: true },
+                    { name: '💳 Method', value: `**${payment}**`, inline: true }
+                );
             await logChannel.send({ embeds: [embed] });
         }
-        await interaction.editReply(`✅ Sale recorded for ${user.username}.`);
+        await interaction.editReply(`✅ Logged for ${user.username}.`);
     }
 };
