@@ -1,4 +1,21 @@
-async execute(interaction) {
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { Transaction, UserStats } = require('../models/Transaction');
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('addtransaction')
+        .setDescription('Record a transaction')
+        .addUserOption(o => o.setName('user').setDescription('The target user').setRequired(true))
+        .addStringOption(o => o.setName('deal_type').setDescription('Did they buy from you or sell to you?').setRequired(true)
+            .addChoices(
+                { name: 'Customer Purchased (I sold to them)', value: 'purchase' },
+                { name: 'Customer Sold (I bought from them)', value: 'sale' }
+            ))
+        .addNumberOption(o => o.setName('amount').setDescription('Numerical amount').setRequired(true))
+        .addStringOption(o => o.setName('item').setDescription('Item name').setRequired(true))
+        .addStringOption(o => o.setName('payment').setDescription('Type any payment method').setRequired(true)),
+
+    async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user');
         const dealType = interaction.options.getString('deal_type');
@@ -11,12 +28,10 @@ async execute(interaction) {
         let robux = isRobux ? amount : 0;
         const now = new Date();
 
-        // 1. Create the receipt
         await Transaction.create({ 
             userId: user.id, type: dealType, amountUSD: usd, amountRobux: robux, item, payment, date: now 
         });
 
-        // 2. THIS WAS MISSING: Update the main UserStats so the leaderboard works!
         await UserStats.findOneAndUpdate(
             { userId: user.id },
             { 
@@ -48,3 +63,4 @@ async execute(interaction) {
         }
         await interaction.editReply(`✅ Successfully logged for ${user.username}.`);
     }
+};

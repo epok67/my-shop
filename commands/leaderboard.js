@@ -10,11 +10,10 @@ module.exports = {
         await interaction.deferReply();
         const allStats = await UserStats.find({});
 
-        if (allStats.length === 0) {
+        if (!allStats || allStats.length === 0) {
             return interaction.editReply('No data found for the leaderboard.');
         }
 
-        // Safely calculate volume, defaulting to 0 instead of undefined
         const sortedUsers = allStats.map(s => {
             const bought = s.purchasedUSD || s.totalSold || s.totalBought || 0;
             const sold = s.soldUSD || s.totalRevenue || 0;
@@ -29,13 +28,11 @@ module.exports = {
             .setColor(0xFFD700);
 
         let description = '';
-        for (let i = 0; i < sortedUsers.length; i++) {
-            const u = sortedUsers[i];
-            // Only show users who actually have money logged
+        sortedUsers.forEach((u, i) => {
             if (u.totalVolume > 0) {
                 description += `**${i + 1}.** <@${u.userId}> - Volume: \`$${u.totalVolume.toFixed(2)}\`\n`;
             }
-        }
+        });
 
         embed.setDescription(description || "No ranked traders yet.");
         await interaction.editReply({ embeds: [embed] });

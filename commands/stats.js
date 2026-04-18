@@ -21,7 +21,6 @@ module.exports = {
         let rPurchasedUSD = 0, rSoldUSD = 0, rPurchasedRobux = 0, rSoldRobux = 0, highestDeal = 0;
         const counts = {};
 
-        // Tally up the raw receipts
         txs.forEach(t => {
             if (t.item) counts[t.item] = (counts[t.item] || 0) + 1;
             const tUSD = t.amountUSD || t.amount || 0;
@@ -34,14 +33,11 @@ module.exports = {
             if (tUSD > highestDeal) highestDeal = tUSD;
         });
 
-        // Pull the legacy database numbers
         const lPurchasedUSD = stats.purchasedUSD || stats.totalSold || stats.totalBought || 0;
         const lSoldUSD = stats.soldUSD || stats.totalRevenue || 0;
         const lPurchasedRobux = stats.purchasedRobux || stats.totalRobux || 0;
         const lSoldRobux = stats.soldRobux || 0;
 
-        // THE FIX: Take the highest number between the old database and the new receipts. 
-        // This instantly recovers your missing thousands.
         const finalPurchasedUSD = Math.max(lPurchasedUSD, rPurchasedUSD);
         const finalSoldUSD = Math.max(lSoldUSD, rSoldUSD);
         const finalPurchasedRobux = Math.max(lPurchasedRobux, rPurchasedRobux);
@@ -62,15 +58,12 @@ module.exports = {
                 { name: '🛒 Total Purchased (USD)', value: `\`$${finalPurchasedUSD.toFixed(2)}\``, inline: true },
                 { name: '🤝 Total Sold (USD)', value: `\`$${finalSoldUSD.toFixed(2)}\``, inline: true },
                 { name: '\u200B', value: '\u200B', inline: true },
-                
                 { name: '🛒 Total Purchased (R$)', value: `<:Epok_Robux:1394440796211515402> \`${finalPurchasedRobux.toLocaleString()}\``, inline: true },
                 { name: '🤝 Total Sold (R$)', value: `<:Epok_Robux:1394440796211515402> \`${finalSoldRobux.toLocaleString()}\``, inline: true },
                 { name: '\u200B', value: '\u200B', inline: true },
-                
                 { name: '📊 Total Deals', value: `\`${totalDeals}\` Transactions`, inline: true },
                 { name: '💎 Highest Deal', value: `\`$${finalHighest.toFixed(2)}\``, inline: true },
                 { name: '📈 Average USD Deal', value: `\`$${avgUSD.toFixed(2)}\``, inline: true },
-                
                 { name: '✨ Favorite Item', value: `📦 **${favItem.toUpperCase()}**`, inline: true },
                 { name: '🕒 Last Transaction', value: lastTs ? `<t:${lastTs}:R>` : 'Unknown', inline: true }
             );
