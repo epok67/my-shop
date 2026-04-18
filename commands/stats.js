@@ -17,27 +17,29 @@ module.exports = {
 
         const getFav = (arr, key) => {
             const counts = {};
-            arr.forEach(t => {
-                if(t[key]) counts[t[key]] = (counts[t[key]] || 0) + 1;
-            });
+            arr.forEach(t => { if(t[key]) counts[t[key]] = (counts[t[key]] || 0) + 1; });
             return Object.keys(counts).length > 0 ? Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) : "N/A";
         };
 
         const favItem = getFav(txs, 'item');
         const favPayment = getFav(txs, 'payment');
-        const estDate = (date) => date ? date.toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'Never';
+        
+        // Discord dynamic timestamps
+        const lastTs = Math.floor(stats.lastPurchaseDate.getTime() / 1000);
+        const genTs = Math.floor(Date.now() / 1000);
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle(`💼 Financial Dossier: ${target.username}`)
             .addFields(
-                { name: '📥 Total Bought', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
+                { name: '📤 Total Sold', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
                 { name: '💎 Highest Deal', value: `$${stats.highestSale.toFixed(2)}`, inline: true },
                 { name: '✨ Favorite Item', value: `📦 ${favItem}`, inline: false },
                 { name: '💳 Preferred Method', value: favPayment, inline: false },
-                { name: '🕒 Last Transaction', value: `**Item:** ${stats.lastPurchaseItem}\n**Date:** ${estDate(stats.lastPurchaseDate)}`, inline: false }
+                { name: '🕒 Last Transaction', value: `**Item:** ${stats.lastPurchaseItem}\n**Date:** <t:${lastTs}:F>`, inline: false }
             )
-            .setFooter({ text: `Generated: ${estDate(new Date())}` });
+            .setFooter({ text: `Generated • ` })
+            .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
     }

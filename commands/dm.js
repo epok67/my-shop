@@ -19,7 +19,7 @@ module.exports = {
 
         const dmEmbed = new EmbedBuilder()
             .setColor(0x5865F2)
-            .setTitle('✉️ Message from Epok\'s Store')
+            .setTitle('✉️ Message from Epok')
             .setDescription(text)
             .setFooter({ text: 'Reply in the server if you have questions!' });
 
