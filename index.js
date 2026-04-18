@@ -9,7 +9,8 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, 
         GatewayIntentBits.DirectMessages, 
-        GatewayIntentBits.GuildMessages 
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMembers
     ],
     partials: [Partials.Channel, Partials.Message] 
 });
@@ -33,7 +34,6 @@ for (const file of commandFiles) {
 
 client.once('ready', () => {
     console.log(`🚀 Logged in as ${client.user.tag}!`);
-    // Run LTC watcher every 60 seconds
     setInterval(() => watchLTC(client), 60000);
 });
 
@@ -45,10 +45,11 @@ client.on('interactionCreate', async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
+        const reply = { content: 'There was an error while executing this command!', ephemeral: true };
         if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+            await interaction.followUp(reply);
         } else {
-            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+            await interaction.reply(reply);
         }
     }
 });

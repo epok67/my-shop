@@ -8,6 +8,11 @@ module.exports = {
         .addStringOption(o => o.setName('id').setDescription('The Transaction ID').setRequired(true)),
 
     async execute(interaction) {
+        const OWNER_ROLE_ID = '1278006636375576689';
+        if (!interaction.member.roles.cache.has(OWNER_ROLE_ID)) {
+            return interaction.reply({ content: '❌ Admin only.', ephemeral: true });
+        }
+
         await interaction.deferReply({ ephemeral: true });
         const txId = interaction.options.getString('id');
 

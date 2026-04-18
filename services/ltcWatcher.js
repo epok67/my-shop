@@ -13,14 +13,11 @@ async function watchLTC(client) {
 
         const latestTx = response.data.txs[0];
 
-        // First run: establish baseline
         if (lastTxHash === null) {
             lastTxHash = latestTx.hash;
-            console.log(`LTC Watcher Active. Baseline set to: ${lastTxHash}`);
             return;
         }
 
-        // No new activity
         if (latestTx.hash === lastTxHash) return;
 
         lastTxHash = latestTx.hash;
@@ -43,9 +40,8 @@ async function watchLTC(client) {
 
         await channel.send({ content: '🔔 **LTC Wallet Activity Detected!**', embeds: [embed] });
     } catch (err) {
-        // Silent error for connection timeouts
         if (err.code !== 'ECONNRESET') {
-            console.error('LTC Watcher Sync Error:', err.message);
+            console.error('LTC Watcher Error:', err.message);
         }
     }
 }

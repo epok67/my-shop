@@ -7,6 +7,11 @@ module.exports = {
         .setDescription('Check your personal LTC wallet balance'),
 
     async execute(interaction) {
+        const OWNER_ROLE_ID = '1278006636375576689';
+        if (!interaction.member.roles.cache.has(OWNER_ROLE_ID)) {
+            return interaction.reply({ content: '❌ Admin only.', ephemeral: true });
+        }
+
         await interaction.deferReply();
         const MY_LTC = 'LfHoEQv9hJEuNciskmpdX6yUQCdBFaFboL';
 

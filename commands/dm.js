@@ -8,10 +8,9 @@ module.exports = {
         .addStringOption(o => o.setName('message').setDescription('What to say').setRequired(true)),
 
     async execute(interaction) {
-        // Hardcoded your ID from the screenshot logs
-        const ADMIN_ID = '459516116465876992';
+        const OWNER_ROLE_ID = '1278006636375576689';
         
-        if (interaction.user.id !== ADMIN_ID) {
+        if (!interaction.member.roles.cache.has(OWNER_ROLE_ID)) {
             return interaction.reply({ content: '❌ Admin only.', ephemeral: true });
         }
 
