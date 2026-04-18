@@ -4,29 +4,40 @@ const { UserStats } = require('../models/Transaction');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('leaderboard')
-        .setDescription('View the top financial performers'),
+        .setDescription('View the top traders'),
 
     async execute(interaction) {
         await interaction.deferReply();
+        const allStats = await UserStats.find({});
 
-        // We keep the logic as is, just swapping the names in the embed below
-        const topSold = await UserStats.find({ totalSold: { $gt: 0 } }).sort({ totalSold: -1 }).limit(10);
-        const topBought = await UserStats.find({ totalBought: { $gt: 0 } }).sort({ totalBought: -1 }).limit(10);
+        if (allStats.length === 0) {
+            return interaction.editReply('No data found for the leaderboard.');
+        }
 
-        const formatList = (list, key) => 
-            list.map((u, i) => `${i + 1}. <@${u.userId}> - $${u[key].toFixed(2)}`).join('\n') || 'None';
+        // Safely calculate volume, defaulting to 0 instead of undefined
+        const sortedUsers = allStats.map(s => {
+            const bought = s.purchasedUSD || s.totalSold || s.totalBought || 0;
+            const sold = s.soldUSD || s.totalRevenue || 0;
+            return {
+                userId: s.userId,
+                totalVolume: bought + sold
+            };
+        }).sort((a, b) => b.totalVolume - a.totalVolume).slice(0, 10);
 
         const embed = new EmbedBuilder()
-            .setColor(0xF1C40F)
-            .setTitle('🏆 Financial Leaderboard')
-            .addFields(
-                // SWAPPED LABELS HERE
-                { name: '🛒 Top Spenders (Most Bought)', value: formatList(topSold, 'totalSold'), inline: true },
-                { name: '💰 Top Earners (Most Sold)', value: formatList(topBought, 'totalBought'), inline: true }
-            )
-            .setTimestamp()
-            .setFooter({ text: 'Economy Rankings' });
+            .setTitle('🏆 Top Traders Leaderboard')
+            .setColor(0xFFD700);
 
+        let description = '';
+        for (let i = 0; i < sortedUsers.length; i++) {
+            const u = sortedUsers[i];
+            // Only show users who actually have money logged
+            if (u.totalVolume > 0) {
+                description += `**${i + 1}.** <@${u.userId}> - Volume: \`$${u.totalVolume.toFixed(2)}\`\n`;
+            }
+        }
+
+        embed.setDescription(description || "No ranked traders yet.");
         await interaction.editReply({ embeds: [embed] });
     }
 };

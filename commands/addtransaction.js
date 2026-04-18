@@ -1,21 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { Transaction, UserStats } = require('../models/Transaction');
-
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('addtransaction')
-        .setDescription('Record a transaction')
-        .addUserOption(o => o.setName('user').setDescription('The target user').setRequired(true))
-        .addStringOption(o => o.setName('deal_type').setDescription('Did they buy from you or sell to you?').setRequired(true)
-            .addChoices(
-                { name: 'Customer Purchased (I sold to them)', value: 'purchase' },
-                { name: 'Customer Sold (I bought from them)', value: 'sale' }
-            ))
-        .addNumberOption(o => o.setName('amount').setDescription('Numerical amount').setRequired(true))
-        .addStringOption(o => o.setName('item').setDescription('Item name').setRequired(true))
-        .addStringOption(o => o.setName('payment').setDescription('Type any payment method (Venmo, Zelle, Robux, etc)').setRequired(true)),
-
-    async execute(interaction) {
+async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user');
         const dealType = interaction.options.getString('deal_type');
@@ -23,22 +6,35 @@ module.exports = {
         const item = interaction.options.getString('item').toUpperCase();
         const payment = interaction.options.getString('payment');
         
-        // Automatically check if they typed Robux
         const isRobux = payment.toLowerCase().includes('robux');
         let usd = isRobux ? 0 : amount;
         let robux = isRobux ? amount : 0;
-
         const now = new Date();
-        const newTx = await Transaction.create({ 
+
+        // 1. Create the receipt
+        await Transaction.create({ 
             userId: user.id, type: dealType, amountUSD: usd, amountRobux: robux, item, payment, date: now 
         });
 
+        // 2. THIS WAS MISSING: Update the main UserStats so the leaderboard works!
+        await UserStats.findOneAndUpdate(
+            { userId: user.id },
+            { 
+                $inc: { 
+                    purchasedUSD: dealType === 'purchase' ? usd : 0,
+                    soldUSD: dealType === 'sale' ? usd : 0,
+                    purchasedRobux: dealType === 'purchase' ? robux : 0,
+                    soldRobux: dealType === 'sale' ? robux : 0,
+                    countDeals: 1
+                },
+                $set: { lastPurchaseDate: now }
+            },
+            { upsert: true, new: true }
+        );
+
         const logChannel = await interaction.client.channels.fetch('1397978290693865512');
         if (logChannel) {
-            const displayValue = isRobux 
-                ? `<:Epok_Robux:1394440796211515402> **${amount.toLocaleString()}**` 
-                : `**$${amount.toFixed(2)}**`;
-
+            const displayValue = isRobux ? `<:Epok_Robux:1394440796211515402> **${amount.toLocaleString()}**` : `**$${amount.toFixed(2)}**`;
             const embed = new EmbedBuilder()
                 .setColor(dealType === 'purchase' ? 0x2ECC71 : 0xE74C3C)
                 .setTitle(`✅ ${dealType === 'purchase' ? 'Sale' : 'Purchase'} Logged`)
@@ -47,10 +43,8 @@ module.exports = {
                     { name: '📦 Item', value: `**${item}**`, inline: true },
                     { name: '💰 Value', value: displayValue, inline: true },
                     { name: '💳 Method', value: `**${payment}**`, inline: true }
-                )
-                .setTimestamp();
+                ).setTimestamp();
             await logChannel.send({ embeds: [embed] });
         }
         await interaction.editReply(`✅ Successfully logged for ${user.username}.`);
     }
-};
