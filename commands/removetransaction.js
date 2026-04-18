@@ -4,27 +4,54 @@ const { Transaction, UserStats } = require('../models/Transaction');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('removetransaction')
-        .setDescription('Remove a transaction by ID')
-        .addStringOption(o => o.setName('txid').setDescription('The Transaction ID (from MongoDB)').setRequired(true)),
+        .setDescription('Delete a transaction and update user stats')
+        .addStringOption(o => o.setName('txid').setDescription('The Transaction ID (e.g., REC-4891 or 4891)').setRequired(true)),
 
     async execute(interaction) {
-        const txId = interaction.options.getString('txid');
-        const tx = await Transaction.findById(txId);
+        await interaction.deferReply({ ephemeral: true });
+        const inputId = interaction.options.getString('txid').toUpperCase();
+        
+        // Clean the ID (removes "REC-" if you typed it, or keeps it if that's how it's stored)
+        const cleanId = inputId.replace('REC-', '');
 
-        if (!tx) return interaction.reply({ content: "❌ Transaction not found.", ephemeral: true });
+        try {
+            // Search for the transaction using both possible formats
+            const tx = await Transaction.findOne({ 
+                $or: [
+                    { transactionId: inputId }, 
+                    { transactionId: cleanId }
+                ] 
+            });
 
-        // Update the user's total before deleting the record
-        await UserStats.findOneAndUpdate(
-            { userId: tx.userId },
-            { 
-                $inc: { 
-                    totalSold: -tx.amount, 
-                    countSold: -1 
-                } 
+            if (!tx) {
+                return interaction.editReply(`❌ Could not find a transaction with ID: \`${inputId}\``);
             }
-        );
 
-        await Transaction.findByIdAndDelete(txId);
-        await interaction.reply(`✅ Removed transaction ${txId} and updated user stats.`);
+            // Remove the transaction
+            await Transaction.deleteOne({ _id: tx._id });
+
+            // Subtract from User Stats
+            const type = tx.type || 'purchase';
+            const usd = tx.amountUSD || 0;
+            const robux = tx.amountRobux || 0;
+
+            await UserStats.findOneAndUpdate(
+                { userId: tx.userId },
+                { 
+                    $inc: { 
+                        purchasedUSD: type === 'purchase' ? -usd : 0,
+                        soldUSD: type === 'sale' ? -usd : 0,
+                        purchasedRobux: type === 'purchase' ? -robux : 0,
+                        soldRobux: type === 'sale' ? -robux : 0,
+                        countDeals: -1
+                    }
+                }
+            );
+
+            await interaction.editReply(`✅ Successfully deleted transaction \`${tx.transactionId}\` and updated user stats.`);
+        } catch (err) {
+            console.error(err);
+            await interaction.editReply("❌ Error while trying to delete transaction.");
+        }
     }
 };
