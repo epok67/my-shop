@@ -34,7 +34,7 @@ module.exports = {
                 }
             });
 
-            // Convert to Title Case for "Best Transaction"
+            // Convert to Title Case for "Best Transaction" (Not all caps)
             const cleanBestItem = bestItem.toLowerCase().split(' ').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ');
 
             const embed = new EmbedBuilder()
@@ -51,4 +51,14 @@ module.exports = {
                     { name: '\u200B', value: '\u200B', inline: true }, 
                     { name: '<:Epok_Buyer:1411729871268216874> Total Deals', value: `\`${txs.length}\` Transactions`, inline: true },
                     { name: '<a:Epok_GiftBox:1397282003346264226> Best Transaction', value: `**${cleanBestItem}**`, inline: true },
-                    { name: '<a:Epok_BlueDot:1452761174377496576> Last Transaction', value: `<t:${Math.floor(txs[0].date.getTime() / 1000)}:R>`, inline: true
+                    { name: '<a:Epok_BlueDot:1452761174377496576> Last Transaction', value: `<t:${Math.floor(txs[0].date.getTime() / 1000)}:R>`, inline: true }
+                )
+                .setFooter({ text: 'Epok\'s Store Tracking System' });
+
+            await interaction.editReply({ embeds: [embed] });
+        } catch (err) { 
+            console.error(err); 
+            await interaction.editReply("❌ Error loading stats.");
+        }
+    }
+};
