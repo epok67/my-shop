@@ -1,18 +1,18 @@
 const mongoose = require('mongoose');
 
-const txSchema = new mongoose.Schema({
+const transactionSchema = new mongoose.Schema({
     userId: String,
     transactionId: String,
-    type: String,
-    amountUSD: Number,
-    amountRobux: Number,
+    type: String, // 'purchase' or 'sale'
+    amountUSD: { type: Number, default: 0 },
+    amountRobux: { type: Number, default: 0 },
     item: String,
     payment: String,
     date: { type: Date, default: Date.now }
 });
 
-const statsSchema = new mongoose.Schema({
-    userId: { type: String, unique: true },
+const userStatsSchema = new mongoose.Schema({
+    userId: String,
     purchasedUSD: { type: Number, default: 0 },
     soldUSD: { type: Number, default: 0 },
     purchasedRobux: { type: Number, default: 0 },
@@ -21,7 +21,7 @@ const statsSchema = new mongoose.Schema({
     lastPurchaseDate: Date
 });
 
-module.exports = {
-    Transaction: mongoose.model('Transaction', txSchema),
-    UserStats: mongoose.model('UserStats', statsSchema)
-};
+const Transaction = mongoose.model('Transaction', transactionSchema);
+const UserStats = mongoose.model('UserStats', userStatsSchema);
+
+module.exports = { Transaction, UserStats };

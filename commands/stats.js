@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { Transaction, UserStats } = require('../models/Transaction');
+const { Transaction } = require('../models/Transaction');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -42,8 +42,10 @@ module.exports = {
                 .addFields(
                     { name: '🛒 Total Purchased (USD)', value: `\`$${pUSD.toFixed(2)}\``, inline: true },
                     { name: '🤝 Total Sold (USD)', value: `\`$${sUSD.toFixed(2)}\``, inline: true },
+                    { name: '\u200B', value: '\u200B', inline: true }, 
                     { name: '🛒 Total Purchased (R$)', value: `<:Epok_Robux:1394440796211515402> \`${pRbx.toLocaleString()}\``, inline: true },
                     { name: '🤝 Total Sold (R$)', value: `<:Epok_Robux:1394440796211515402> \`${sRbx.toLocaleString()}\``, inline: true },
+                    { name: '\u200B', value: '\u200B', inline: true }, 
                     { name: '📊 Total Deals', value: `\`${txs.length}\` Transactions`, inline: true },
                     { name: '🏆 Best Transaction', value: `📦 **${bestItem.toUpperCase()}**`, inline: true },
                     { name: '🕒 Last Transaction', value: `<t:${Math.floor(txs[0].date.getTime() / 1000)}:R>`, inline: true }
@@ -51,6 +53,9 @@ module.exports = {
                 .setFooter({ text: 'Epok\'s Store Tracking System' });
 
             await interaction.editReply({ embeds: [embed] });
-        } catch (err) { console.error(err); }
+        } catch (err) { 
+            console.error(err); 
+            await interaction.editReply("❌ Error loading stats.");
+        }
     }
 };
