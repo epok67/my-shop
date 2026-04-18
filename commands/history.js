@@ -16,12 +16,17 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setTitle(`📜 History: ${target.username}`)
-            .setColor(0x00FF00);
+            .setColor(0x00FF00)
+            .setThumbnail(target.displayAvatarURL());
 
         const historyList = txs.map(t => {
-            const val = (t.amountRobux || 0) > 0 ? `${t.amountRobux.toLocaleString()} R$` : `$${(t.amountUSD || t.amount || 0).toFixed(2)}`;
+            // Check every possible field to ensure no $0.00 shows up
+            const usd = t.amountUSD || t.amount || 0;
+            const rbk = t.amountRobux || t.robuxAmount || 0;
+            
+            const val = rbk > 0 ? `${rbk.toLocaleString()} R$` : `$${usd.toFixed(2)}`;
             const typeIcon = (t.type === 'sale' || t.type === 'sell') ? '📥' : '📤';
-            return `\`${typeIcon}\` **${val}** - ${t.item || 'Unknown'} (<t:${Math.floor(t.date.getTime()/1000)}:R>)`;
+            return `\`${typeIcon}\` **${val}** - ${t.item || 'Unknown Item'} (<t:${Math.floor(t.date.getTime()/1000)}:R>)`;
         }).join('\n');
 
         embed.setDescription(historyList);

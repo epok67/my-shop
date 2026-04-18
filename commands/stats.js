@@ -18,7 +18,7 @@ module.exports = {
             return interaction.editReply(`No records found for **${target.username}**.`);
         }
 
-        let rPurchasedUSD = 0, rSoldUSD = 0, rPurchasedRobux = 0, rSoldRobux = 0, highestDeal = 0;
+        let rPurchasedUSD = 0, rSoldUSD = 0, rPurchasedRobux = 0, rSoldRobux = 0;
         const counts = {};
 
         txs.forEach(t => {
@@ -29,17 +29,16 @@ module.exports = {
 
             if (type === 'purchase') { rPurchasedUSD += tUSD; rPurchasedRobux += tRobux; } 
             else { rSoldUSD += tUSD; rSoldRobux += tRobux; }
-            if (tUSD > highestDeal) highestDeal = tUSD;
         });
 
-        // Forced recovery: Checks every possible naming convention used in the DB history
-        const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0, stats.totalSold || 0, stats.totalBought || 0);
+        // Deep merge legacy and new data
+        const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0, stats.totalBought || 0);
         const finalSoldUSD = Math.max(rSoldUSD, stats.soldUSD || 0, stats.totalRevenue || 0);
         const finalPurchasedRobux = Math.max(rPurchasedRobux, stats.purchasedRobux || 0, stats.totalRobux || 0);
         const finalSoldRobux = Math.max(rSoldRobux, stats.soldRobux || 0);
         
         const totalDeals = Math.max(txs.length, stats.countDeals || 0);
-        const favItem = Object.keys(counts).length > 0 ? Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) : 'N/A';
+        const favItem = Object.keys(counts).length > 0 ? Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) : (stats.favoriteItem || 'N/A');
         const lastTs = txs.length > 0 ? Math.floor(txs[0].date.getTime() / 1000) : (stats.lastPurchaseDate ? Math.floor(stats.lastPurchaseDate.getTime() / 1000) : null);
 
         const embed = new EmbedBuilder()
@@ -58,7 +57,7 @@ module.exports = {
                 { name: '✨ Favorite Item', value: `📦 **${favItem.toUpperCase()}**`, inline: true },
                 { name: '🕒 Last Transaction', value: lastTs ? `<t:${lastTs}:R>` : 'No records', inline: true }
             )
-            .setFooter({ text: 'Epok\'s Store Tracking', iconURL: interaction.guild?.iconURL() });
+            .setFooter({ text: 'Epok\'s Store Tracking System', iconURL: interaction.guild?.iconURL() });
 
         await interaction.editReply({ embeds: [embed] });
     }
