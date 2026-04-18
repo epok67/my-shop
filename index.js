@@ -29,20 +29,25 @@ for (const file of commandFiles) {
     }
 }
 
+// THE HEARTBEAT: This tells us if Discord is even talking to the bot
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
     
-    console.log(`📥 [/${interaction.commandName}] from ${interaction.user.tag}`);
+    console.log(`📥 RECEIVED: /${interaction.commandName} from ${interaction.user.tag}`);
 
     const command = client.commands.get(interaction.commandName);
-    if (!command) return;
+    if (!command) {
+        console.log(`❓ Command /${interaction.commandName} not found.`);
+        return;
+    }
 
     try {
         await command.execute(interaction);
+        console.log(`📤 EXECUTED: /${interaction.commandName}`);
     } catch (error) {
-        console.error(`❌ Execution Error:`, error);
+        console.error(`❌ CRASH in /${interaction.commandName}:`, error);
         if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: '❌ Internal Error.', ephemeral: true });
+            await interaction.reply({ content: '❌ Internal Execution Error.', ephemeral: true });
         }
     }
 });
@@ -55,5 +60,8 @@ async function start() {
     } catch (err) { console.error("❌ Startup Error:", err); }
 }
 
+// Handling both event names just to be safe
+client.once('ready', c => console.log(`🚀 ONLINE: ${c.user.tag}`));
 client.once('clientReady', c => console.log(`🚀 ONLINE: ${c.user.tag}`));
+
 start();
