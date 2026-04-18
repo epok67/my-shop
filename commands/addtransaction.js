@@ -13,13 +13,7 @@ module.exports = {
             ))
         .addNumberOption(o => o.setName('amount').setDescription('Numerical amount').setRequired(true))
         .addStringOption(o => o.setName('item').setDescription('Item name').setRequired(true))
-        .addStringOption(o => o.setName('payment').setDescription('Currency / Method').setRequired(true)
-            .addChoices(
-                { name: 'PayPal', value: 'PayPal' },
-                { name: 'Litecoin (LTC)', value: 'LTC' },
-                { name: 'CashApp', value: 'CashApp' },
-                { name: 'Robux', value: 'Robux' }
-            )),
+        .addStringOption(o => o.setName('payment').setDescription('Type any payment method (Venmo, Zelle, Robux, etc)').setRequired(true)),
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
@@ -29,37 +23,19 @@ module.exports = {
         const item = interaction.options.getString('item').toUpperCase();
         const payment = interaction.options.getString('payment');
         
-        let usd = payment === 'Robux' ? 0 : amount;
-        let robux = payment === 'Robux' ? amount : 0;
+        // Automatically check if they typed Robux
+        const isRobux = payment.toLowerCase().includes('robux');
+        let usd = isRobux ? 0 : amount;
+        let robux = isRobux ? amount : 0;
 
         const now = new Date();
         const newTx = await Transaction.create({ 
             userId: user.id, type: dealType, amountUSD: usd, amountRobux: robux, item, payment, date: now 
         });
-        
-        // Route the money to the correct database field based on the deal type
-        const incQuery = { countDeals: 1 };
-        if (dealType === 'purchase') {
-            incQuery.purchasedUSD = usd;
-            incQuery.purchasedRobux = robux;
-        } else {
-            incQuery.soldUSD = usd;
-            incQuery.soldRobux = robux;
-        }
-
-        await UserStats.findOneAndUpdate(
-            { userId: user.id }, 
-            { 
-                $inc: incQuery, 
-                $set: { lastPurchaseItem: item, lastPurchaseDate: now }, 
-                $max: { highestDeal: amount } 
-            }, 
-            { upsert: true }
-        );
 
         const logChannel = await interaction.client.channels.fetch('1397978290693865512');
         if (logChannel) {
-            const displayValue = payment === 'Robux' 
+            const displayValue = isRobux 
                 ? `<:Epok_Robux:1394440796211515402> **${amount.toLocaleString()}**` 
                 : `**$${amount.toFixed(2)}**`;
 
@@ -69,7 +45,8 @@ module.exports = {
                 .addFields(
                     { name: '👤 User', value: `<@${user.id}>`, inline: true },
                     { name: '📦 Item', value: `**${item}**`, inline: true },
-                    { name: '💰 Value', value: displayValue, inline: true }
+                    { name: '💰 Value', value: displayValue, inline: true },
+                    { name: '💳 Method', value: `**${payment}**`, inline: true }
                 )
                 .setTimestamp();
             await logChannel.send({ embeds: [embed] });

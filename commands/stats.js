@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { UserStats, Transaction } = require('../models/Transaction');
+const { Transaction } = require('../models/Transaction');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -11,27 +11,45 @@ module.exports = {
         await interaction.deferReply();
         const target = interaction.options.getUser('user') || interaction.user;
         
-        const stats = await UserStats.findOne({ userId: target.id });
+        // Fetch ALL transactions. We rebuild the stats from the actual receipts to prevent $0.00 errors.
         const txs = await Transaction.find({ userId: target.id }).sort({ date: -1 });
 
-        if (!stats || txs.length === 0) {
+        if (txs.length === 0) {
             return interaction.editReply(`No records found for **${target.username}**.`);
         }
 
+        let purchasedUSD = 0, soldUSD = 0;
+        let purchasedRobux = 0, soldRobux = 0;
+        let highestDeal = 0;
         const counts = {};
-        txs.forEach(t => { if(t.item) counts[t.item] = (counts[t.item] || 0) + 1; });
-        const favItem = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
-        
-        // 🚨 RECOVERY LOGIC: This pulls your old "wiped" data if the new fields are empty 🚨
-        const purchasedUSD = stats.purchasedUSD || stats.totalSold || 0;
-        const soldUSD = stats.soldUSD || stats.totalRevenue || 0;
-        const purchasedRobux = stats.purchasedRobux || stats.totalRobux || 0;
-        const soldRobux = stats.soldRobux || 0;
-        const totalDeals = stats.countDeals || stats.countSold || 0;
-        const highestValue = stats.highestDeal || stats.highestSale || 0;
 
-        const avgUSD = totalDeals > 0 ? (purchasedUSD / totalDeals) : 0;
-        const lastTs = Math.floor(stats.lastPurchaseDate.getTime() / 1000);
+        txs.forEach(t => {
+            // Count favorite items
+            if (t.item) counts[t.item] = (counts[t.item] || 0) + 1;
+
+            // Legacy fallback logic to catch old database entries
+            const tUSD = t.amountUSD || t.amount || 0;
+            const tRobux = t.amountRobux || t.robuxAmount || 0;
+            const type = t.type || 'purchase'; // Assumes old deals were purchases if unlabelled
+
+            if (type === 'purchase') {
+                purchasedUSD += tUSD;
+                purchasedRobux += tRobux;
+            } else {
+                soldUSD += tUSD;
+                soldRobux += tRobux;
+            }
+
+            // Track highest deal
+            if (tUSD > highestDeal) highestDeal = tUSD;
+        });
+
+        const totalDeals = txs.length;
+        const favItem = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+        const avgUSD = totalDeals > 0 ? ((purchasedUSD + soldUSD) / totalDeals) : 0;
+        
+        const latestTx = txs[0];
+        const lastTs = Math.floor(latestTx.date.getTime() / 1000);
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
@@ -39,26 +57,22 @@ module.exports = {
             .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 1024 }))
             .setTitle('💼 Comprehensive Financial Overview')
             .addFields(
-                // USD Row
                 { name: '🛒 Total Purchased (USD)', value: `\`$${purchasedUSD.toFixed(2)}\``, inline: true },
                 { name: '🤝 Total Sold (USD)', value: `\`$${soldUSD.toFixed(2)}\``, inline: true },
-                { name: '\u200B', value: '\u200B', inline: true }, // Spacer
+                { name: '\u200B', value: '\u200B', inline: true },
                 
-                // Robux Row
                 { name: '🛒 Total Purchased (R$)', value: `<:Epok_Robux:1394440796211515402> \`${purchasedRobux.toLocaleString()}\``, inline: true },
                 { name: '🤝 Total Sold (R$)', value: `<:Epok_Robux:1394440796211515402> \`${soldRobux.toLocaleString()}\``, inline: true },
-                { name: '\u200B', value: '\u200B', inline: true }, // Spacer
+                { name: '\u200B', value: '\u200B', inline: true },
                 
-                // General Stats
                 { name: '📊 Total Deals', value: `\`${totalDeals}\` Transactions`, inline: true },
-                { name: '💎 Highest Deal', value: `\`$${highestValue.toFixed(2)}\``, inline: true },
+                { name: '💎 Highest Deal', value: `\`$${highestDeal.toFixed(2)}\``, inline: true },
                 { name: '📈 Average USD Deal', value: `\`$${avgUSD.toFixed(2)}\``, inline: true },
                 
-                // Bottom Details
                 { name: '✨ Favorite Item', value: `📦 **${favItem.toUpperCase()}** (${counts[favItem]} deals)`, inline: true },
                 { name: '🕒 Last Transaction', value: `<t:${lastTs}:R>`, inline: true }
             )
-            .setFooter({ text: 'Epok\'s Store Advanced Tracking System', iconURL: interaction.guild.iconURL() });
+            .setFooter({ text: 'Epok\'s Store Advanced Tracking System', iconURL: interaction.guild?.iconURL() });
 
         await interaction.editReply({ embeds: [embed] });
     }
