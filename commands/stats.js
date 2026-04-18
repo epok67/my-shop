@@ -29,30 +29,23 @@ module.exports = {
 
             if (type === 'purchase') { rPurchasedUSD += tUSD; rPurchasedRobux += tRobux; } 
             else { rSoldUSD += tUSD; rSoldRobux += tRobux; }
-
             if (tUSD > highestDeal) highestDeal = tUSD;
         });
 
-        const lPurchasedUSD = stats.purchasedUSD || stats.totalSold || stats.totalBought || 0;
-        const lSoldUSD = stats.soldUSD || stats.totalRevenue || 0;
-        const lPurchasedRobux = stats.purchasedRobux || stats.totalRobux || 0;
-        const lSoldRobux = stats.soldRobux || 0;
-
-        const finalPurchasedUSD = Math.max(lPurchasedUSD, rPurchasedUSD);
-        const finalSoldUSD = Math.max(lSoldUSD, rSoldUSD);
-        const finalPurchasedRobux = Math.max(lPurchasedRobux, rPurchasedRobux);
-        const finalSoldRobux = Math.max(lSoldRobux, rSoldRobux);
-        const finalHighest = Math.max(highestDeal, stats.highestDeal || 0);
-
+        // Forced recovery: Checks every possible naming convention used in the DB history
+        const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0, stats.totalSold || 0, stats.totalBought || 0);
+        const finalSoldUSD = Math.max(rSoldUSD, stats.soldUSD || 0, stats.totalRevenue || 0);
+        const finalPurchasedRobux = Math.max(rPurchasedRobux, stats.purchasedRobux || 0, stats.totalRobux || 0);
+        const finalSoldRobux = Math.max(rSoldRobux, stats.soldRobux || 0);
+        
         const totalDeals = Math.max(txs.length, stats.countDeals || 0);
         const favItem = Object.keys(counts).length > 0 ? Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) : 'N/A';
-        const avgUSD = totalDeals > 0 ? ((finalPurchasedUSD + finalSoldUSD) / totalDeals) : 0;
-        
-        const lastTs = txs.length > 0 ? Math.floor(txs[0].date.getTime() / 1000) : null;
+        const lastTs = txs.length > 0 ? Math.floor(txs[0].date.getTime() / 1000) : (stats.lastPurchaseDate ? Math.floor(stats.lastPurchaseDate.getTime() / 1000) : null);
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setAuthor({ name: `Full Audit: ${target.tag}`, iconURL: target.displayAvatarURL() })
+            .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 1024 }))
             .setTitle('💼 Comprehensive Financial Overview')
             .addFields(
                 { name: '🛒 Total Purchased (USD)', value: `\`$${finalPurchasedUSD.toFixed(2)}\``, inline: true },
@@ -62,11 +55,10 @@ module.exports = {
                 { name: '🤝 Total Sold (R$)', value: `<:Epok_Robux:1394440796211515402> \`${finalSoldRobux.toLocaleString()}\``, inline: true },
                 { name: '\u200B', value: '\u200B', inline: true },
                 { name: '📊 Total Deals', value: `\`${totalDeals}\` Transactions`, inline: true },
-                { name: '💎 Highest Deal', value: `\`$${finalHighest.toFixed(2)}\``, inline: true },
-                { name: '📈 Average USD Deal', value: `\`$${avgUSD.toFixed(2)}\``, inline: true },
                 { name: '✨ Favorite Item', value: `📦 **${favItem.toUpperCase()}**`, inline: true },
-                { name: '🕒 Last Transaction', value: lastTs ? `<t:${lastTs}:R>` : 'Unknown', inline: true }
-            );
+                { name: '🕒 Last Transaction', value: lastTs ? `<t:${lastTs}:R>` : 'No records', inline: true }
+            )
+            .setFooter({ text: 'Epok\'s Store Tracking', iconURL: interaction.guild?.iconURL() });
 
         await interaction.editReply({ embeds: [embed] });
     }

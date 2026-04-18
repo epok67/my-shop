@@ -10,27 +10,21 @@ module.exports = {
         await interaction.deferReply();
         const allStats = await UserStats.find({});
 
-        if (!allStats || allStats.length === 0) {
-            return interaction.editReply('No data found for the leaderboard.');
-        }
-
         const sortedUsers = allStats.map(s => {
             const bought = s.purchasedUSD || s.totalSold || s.totalBought || 0;
             const sold = s.soldUSD || s.totalRevenue || 0;
-            return {
-                userId: s.userId,
-                totalVolume: bought + sold
-            };
-        }).sort((a, b) => b.totalVolume - a.totalVolume).slice(0, 10);
+            return { userId: s.userId, total: bought + sold };
+        }).sort((a, b) => b.total - a.total).slice(0, 10);
 
         const embed = new EmbedBuilder()
             .setTitle('🏆 Top Traders Leaderboard')
-            .setColor(0xFFD700);
+            .setColor(0xFFD700)
+            .setFooter({ text: '⚠️ Note: Robux transactions are not included in this leaderboard.' });
 
         let description = '';
         sortedUsers.forEach((u, i) => {
-            if (u.totalVolume > 0) {
-                description += `**${i + 1}.** <@${u.userId}> - Volume: \`$${u.totalVolume.toFixed(2)}\`\n`;
+            if (u.total > 0) {
+                description += `**${i + 1}.** <@${u.userId}> - Total: \`$${u.total.toFixed(2)}\`\n`;
             }
         });
 
