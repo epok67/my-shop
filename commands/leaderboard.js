@@ -4,31 +4,20 @@ const { UserStats } = require('../models/Transaction');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('leaderboard')
-        .setDescription('View the top traders'),
+        .setDescription('Top buyers by USD volume'),
 
     async execute(interaction) {
         await interaction.deferReply();
-        const allStats = await UserStats.find({});
+        try {
+            const top = await UserStats.find({ purchasedUSD: { $gt: 0 } }).sort({ purchasedUSD: -1 }).limit(10);
 
-        const sortedUsers = allStats.map(s => {
-            const bought = s.purchasedUSD || s.totalSold || s.totalBought || 0;
-            const sold = s.soldUSD || s.totalRevenue || 0;
-            return { userId: s.userId, total: bought + sold };
-        }).sort((a, b) => b.total - a.total).slice(0, 10);
+            const embed = new EmbedBuilder()
+                .setColor(0xF1C40F)
+                .setTitle('💰 Top Spenders Leaderboard (USD)')
+                .setDescription(top.length > 0 ? top.map((u, i) => `**${i + 1}.** <@${u.userId}> - \`$${u.purchasedUSD.toFixed(2)}\``).join('\n') : 'No data yet.')
+                .setFooter({ text: 'Run /robuxleaderboard to see robux transactions as robux transactions arent listed in the leaderboard (usd)' });
 
-        const embed = new EmbedBuilder()
-            .setTitle('🏆 Top Traders Leaderboard')
-            .setColor(0xFFD700)
-            .setFooter({ text: '⚠️ Note: Robux transactions are not included in this leaderboard.' });
-
-        let description = '';
-        sortedUsers.forEach((u, i) => {
-            if (u.total > 0) {
-                description += `**${i + 1}.** <@${u.userId}> - Total: \`$${u.total.toFixed(2)}\`\n`;
-            }
-        });
-
-        embed.setDescription(description || "No ranked traders yet.");
-        await interaction.editReply({ embeds: [embed] });
+            await interaction.editReply({ embeds: [embed] });
+        } catch (err) { console.error(err); }
     }
 };

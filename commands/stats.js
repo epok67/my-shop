@@ -20,26 +20,36 @@ module.exports = {
             }
 
             let rPurchasedUSD = 0, rSoldUSD = 0, rPurchasedRobux = 0, rSoldRobux = 0;
-            const counts = {};
+            let bestTx = { item: 'None', value: 0, isRobux: false };
 
             txs.forEach(t => {
-                if (t.item) counts[t.item] = (counts[t.item] || 0) + 1;
-                const tUSD = t.amountUSD || t.amount || 0;
-                const tRobux = t.amountRobux || t.robuxAmount || 0;
+                const tUSD = t.amountUSD || 0;
+                const tRobux = t.amountRobux || 0;
                 const type = t.type || 'purchase';
 
+                // Calculate Totals
                 if (type === 'purchase') { rPurchasedUSD += tUSD; rPurchasedRobux += tRobux; } 
                 else { rSoldUSD += tUSD; rSoldRobux += tRobux; }
+
+                // Determine "Best Transaction" (Highest single value)
+                if (tUSD > bestTx.value) {
+                    bestTx = { item: t.item, value: tUSD, isRobux: false };
+                } else if (tRobux > bestTx.value && !bestTx.isRobux) {
+                    // Simple logic: If it's a huge Robux deal, it counts as "Best"
+                    bestTx = { item: t.item, value: tRobux, isRobux: true };
+                }
             });
 
-            const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0, stats.totalBought || 0);
-            const finalSoldUSD = Math.max(rSoldUSD, stats.soldUSD || 0, stats.totalRevenue || 0);
-            const finalPurchasedRobux = Math.max(rPurchasedRobux, stats.purchasedRobux || 0, stats.totalRobux || 0);
+            const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0);
+            const finalSoldUSD = Math.max(rSoldUSD, stats.soldUSD || 0);
+            const finalPurchasedRobux = Math.max(rPurchasedRobux, stats.purchasedRobux || 0);
             const finalSoldRobux = Math.max(rSoldRobux, stats.soldRobux || 0);
             
-            const totalDeals = Math.max(txs.length, stats.countDeals || 0);
-            const favItem = Object.keys(counts).length > 0 ? Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) : (stats.favoriteItem || 'N/A');
-            const lastTs = txs.length > 0 ? Math.floor(txs[0].date.getTime() / 1000) : (stats.lastPurchaseDate ? Math.floor(stats.lastPurchaseDate.getTime() / 1000) : null);
+            const bestDisplay = bestTx.item !== 'None' 
+                ? `📦 **${bestTx.item.toUpperCase()}** (${bestTx.isRobux ? 'R$' : '$'}${bestTx.value.toLocaleString()})` 
+                : '`N/A`';
+
+            const lastTs = txs.length > 0 ? Math.floor(txs[0].date.getTime() / 1000) : null;
 
             const embed = new EmbedBuilder()
                 .setColor(0x5865F2)
@@ -53,11 +63,11 @@ module.exports = {
                     { name: '🛒 Total Purchased (R$)', value: `<:Epok_Robux:1394440796211515402> \`${finalPurchasedRobux.toLocaleString()}\``, inline: true },
                     { name: '🤝 Total Sold (R$)', value: `<:Epok_Robux:1394440796211515402> \`${finalSoldRobux.toLocaleString()}\``, inline: true },
                     { name: '\u200B', value: '\u200B', inline: true },
-                    { name: '📊 Total Deals', value: `\`${totalDeals}\` Transactions`, inline: true },
-                    { name: '✨ Favorite Item', value: `📦 **${favItem.toUpperCase()}**`, inline: true },
+                    { name: '📊 Total Deals', value: `\`${txs.length || stats.countDeals || 0}\` Transactions`, inline: true },
+                    { name: '🏆 Best Transaction', value: bestDisplay, inline: true },
                     { name: '🕒 Last Transaction', value: lastTs ? `<t:${lastTs}:R>` : 'No records', inline: true }
                 )
-                .setFooter({ text: 'Epok\'s Store Tracking System', iconURL: interaction.guild?.iconURL() });
+                .setFooter({ text: 'Epok\'s Store Tracking System' });
 
             await interaction.editReply({ embeds: [embed] });
         } catch (err) { console.error(err); }

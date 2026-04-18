@@ -26,7 +26,7 @@ module.exports = {
             .addChoices(
                 { name: 'PayPal', value: 'PayPal' }, { name: 'CashApp', value: 'CashApp' },
                 { name: 'Venmo', value: 'Venmo' }, { name: 'LTC', value: 'LTC' },
-                { name: 'Crypto (ETH/SOL/BTC/USDT)', value: 'Crypto' }, { name: 'Cards', value: 'Cards' },
+                { name: 'Crypto (ETH/SOL/BTC/USDT)', value: 'Crypto' }, { name: 'Card (PayPal Giftcards)', value: 'Cards (PayPal Giftcards)' },
                 { name: 'Robux', value: 'Robux' }, { name: 'Other', value: 'Other' }
             ))
         .addStringOption(o => o.setName('manual_other').setDescription('If "Other" is selected, type method here'))
