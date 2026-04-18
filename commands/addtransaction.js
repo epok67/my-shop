@@ -5,37 +5,54 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('addtransaction')
         .setDescription('Record a transaction')
-        .addUserOption(o => o.setName('user').setDescription('The customer').setRequired(true))
+        .addUserOption(o => o.setName('user').setDescription('The target user').setRequired(true))
+        .addStringOption(o => o.setName('deal_type').setDescription('Did they buy from you or sell to you?').setRequired(true)
+            .addChoices(
+                { name: 'Customer Purchased (I sold to them)', value: 'purchase' },
+                { name: 'Customer Sold (I bought from them)', value: 'sale' }
+            ))
         .addNumberOption(o => o.setName('amount').setDescription('Numerical amount').setRequired(true))
-        .addStringOption(o => o.setName('item').setDescription('Item sold').setRequired(true))
-        .addStringOption(o => o.setName('payment').setDescription('Payment method').setRequired(true)
+        .addStringOption(o => o.setName('item').setDescription('Item name').setRequired(true))
+        .addStringOption(o => o.setName('payment').setDescription('Currency / Method').setRequired(true)
             .addChoices(
                 { name: 'PayPal', value: 'PayPal' },
                 { name: 'Litecoin (LTC)', value: 'LTC' },
                 { name: 'CashApp', value: 'CashApp' },
                 { name: 'Robux', value: 'Robux' }
-            ))
-        .addAttachmentOption(o => o.setName('attachment').setDescription('Attach receipt').setRequired(false)),
+            )),
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user');
+        const dealType = interaction.options.getString('deal_type');
         const amount = interaction.options.getNumber('amount');
-        const item = interaction.options.getString('item').toLowerCase();
+        const item = interaction.options.getString('item').toUpperCase();
         const payment = interaction.options.getString('payment');
         
-        let usdInc = (payment === 'Robux') ? 0 : amount;
-        let robuxInc = (payment === 'Robux') ? amount : 0;
+        let usd = payment === 'Robux' ? 0 : amount;
+        let robux = payment === 'Robux' ? amount : 0;
 
         const now = new Date();
-        const newTx = await Transaction.create({ userId: user.id, amount: usdInc, robuxAmount: robuxInc, item, payment, date: now });
+        const newTx = await Transaction.create({ 
+            userId: user.id, type: dealType, amountUSD: usd, amountRobux: robux, item, payment, date: now 
+        });
         
+        // Route the money to the correct database field based on the deal type
+        const incQuery = { countDeals: 1 };
+        if (dealType === 'purchase') {
+            incQuery.purchasedUSD = usd;
+            incQuery.purchasedRobux = robux;
+        } else {
+            incQuery.soldUSD = usd;
+            incQuery.soldRobux = robux;
+        }
+
         await UserStats.findOneAndUpdate(
             { userId: user.id }, 
             { 
-                $inc: { totalRevenue: usdInc, totalSold: usdInc, totalRobux: robuxInc, countSold: 1 }, 
+                $inc: incQuery, 
                 $set: { lastPurchaseItem: item, lastPurchaseDate: now }, 
-                $max: { highestSale: usdInc } 
+                $max: { highestDeal: amount } 
             }, 
             { upsert: true }
         );
@@ -47,21 +64,16 @@ module.exports = {
                 : `**$${amount.toFixed(2)}**`;
 
             const embed = new EmbedBuilder()
-                .setColor(0x2ECC71)
-                .setTitle('✅ New Transaction Logged')
+                .setColor(dealType === 'purchase' ? 0x2ECC71 : 0xE74C3C)
+                .setTitle(`✅ ${dealType === 'purchase' ? 'Sale' : 'Purchase'} Logged`)
                 .addFields(
-                    { name: '👤 Customer', value: `<@${user.id}>`, inline: true },
-                    { name: '📦 Item', value: `**${item.toUpperCase()}**`, inline: true },
-                    { name: '💰 Value', value: displayValue, inline: true },
-                    { name: '💳 Method', value: `**${payment}**`, inline: true },
-                    { name: '🆔 Order ID', value: `\`${newTx._id}\``, inline: false }
+                    { name: '👤 User', value: `<@${user.id}>`, inline: true },
+                    { name: '📦 Item', value: `**${item}**`, inline: true },
+                    { name: '💰 Value', value: displayValue, inline: true }
                 )
                 .setTimestamp();
-
-            const attachment = interaction.options.getAttachment('attachment');
-            if (attachment) embed.setImage(attachment.url);
             await logChannel.send({ embeds: [embed] });
         }
-        await interaction.editReply(`✅ Successfully logged transaction for ${user.username}.`);
+        await interaction.editReply(`✅ Successfully logged for ${user.username}.`);
     }
 };
