@@ -24,27 +24,22 @@ module.exports = {
 
             txs.forEach(t => {
                 if (t.item) counts[t.item] = (counts[t.item] || 0) + 1;
-                const tUSD = t.amountUSD || 0;
-                const tRobux = t.amountRobux || 0;
+                const tUSD = t.amountUSD || t.amount || 0;
+                const tRobux = t.amountRobux || t.robuxAmount || 0;
                 const type = t.type || 'purchase';
 
                 if (type === 'purchase') { rPurchasedUSD += tUSD; rPurchasedRobux += tRobux; } 
                 else { rSoldUSD += tUSD; rSoldRobux += tRobux; }
             });
 
-            const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0);
-            const finalSoldUSD = Math.max(rSoldUSD, stats.soldUSD || 0);
-            const finalPurchasedRobux = Math.max(rPurchasedRobux, stats.purchasedRobux || 0);
+            const finalPurchasedUSD = Math.max(rPurchasedUSD, stats.purchasedUSD || 0, stats.totalBought || 0);
+            const finalSoldUSD = Math.max(rSoldUSD, stats.soldUSD || 0, stats.totalRevenue || 0);
+            const finalPurchasedRobux = Math.max(rPurchasedRobux, stats.purchasedRobux || 0, stats.totalRobux || 0);
             const finalSoldRobux = Math.max(rSoldRobux, stats.soldRobux || 0);
             
             const totalDeals = Math.max(txs.length, stats.countDeals || 0);
-            const favItem = Object.keys(counts).length > 0 
-                ? Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) 
-                : (stats.favoriteItem || 'N/A');
-            
-            const lastTs = txs.length > 0 
-                ? Math.floor(txs[0].date.getTime() / 1000) 
-                : (stats.lastPurchaseDate ? Math.floor(stats.lastPurchaseDate.getTime() / 1000) : null);
+            const favItem = Object.keys(counts).length > 0 ? Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) : (stats.favoriteItem || 'N/A');
+            const lastTs = txs.length > 0 ? Math.floor(txs[0].date.getTime() / 1000) : (stats.lastPurchaseDate ? Math.floor(stats.lastPurchaseDate.getTime() / 1000) : null);
 
             const embed = new EmbedBuilder()
                 .setColor(0x5865F2)
@@ -62,12 +57,11 @@ module.exports = {
                     { name: '✨ Favorite Item', value: `📦 **${favItem.toUpperCase()}**`, inline: true },
                     { name: '🕒 Last Transaction', value: lastTs ? `<t:${lastTs}:R>` : 'No records', inline: true }
                 )
-                .setFooter({ text: "Epok's Store Tracking System" });
+                .setFooter({ text: 'Epok\'s Store Tracking System', iconURL: interaction.guild?.iconURL() });
 
             await interaction.editReply({ embeds: [embed] });
         } catch (err) {
-            console.error(err);
-            await interaction.editReply("❌ Database Error.");
+            console.error("Stats Error:", err);
         }
     }
 };

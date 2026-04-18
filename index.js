@@ -4,14 +4,13 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 
-// DNS Fix for Windows/Railway connection stability
+// MANDATORY DNS FIX FOR RAILWAY/WINDOWS
 const dns = require('node:dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']);
+dns.setServers(['8.8.8.8', '1.1.1.1']); 
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-// Command Loader
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
@@ -23,7 +22,6 @@ for (const file of commandFiles) {
     }
 }
 
-// Interaction Handler
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
     const command = client.commands.get(interaction.commandName);
@@ -33,24 +31,27 @@ client.on('interactionCreate', async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
-        const errPayload = { content: '❌ Error executing this command!', ephemeral: true };
-        if (interaction.replied || interaction.deferred) await interaction.followUp(errPayload);
-        else await interaction.reply(errPayload);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+        } else {
+            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        }
     }
 });
 
-// Boot Sequence
 async function start() {
     try {
-        console.log("📡 Connecting to MongoDB...");
-        await mongoose.connect(process.env.MONGO_URI.trim());
+        await mongoose.connect(process.env.MONGO_URI);
         console.log("✅ Database Connected");
-        await client.login(process.env.DISCORD_TOKEN);
+        client.login(process.env.DISCORD_TOKEN);
     } catch (err) {
-        console.error("❌ Startup Failed:", err.message);
-        process.exit(1);
+        console.error("❌ Login Failed:", err);
     }
 }
 
-client.once('clientReady', c => console.log(`🚀 Logged in as ${c.user.tag}!`));
+// Fixed event name to stop Railway crash loop
+client.once('clientReady', c => {
+    console.log(`🚀 Logged in as ${c.user.tag}!`);
+});
+
 start();
