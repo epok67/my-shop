@@ -11,7 +11,7 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent, // REQUIRED
+        GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers
     ] 
 });
@@ -32,19 +32,15 @@ for (const file of commandFiles) {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
     
-    // DEBUG: This MUST show up in Railway logs when you type the command
-    console.log(`📥 Received command: /${interaction.commandName} from ${interaction.user.tag}`);
+    console.log(`📥 [/${interaction.commandName}] from ${interaction.user.tag}`);
 
     const command = client.commands.get(interaction.commandName);
-    if (!command) {
-        console.log(`❌ Command /${interaction.commandName} not found in Collection.`);
-        return;
-    }
+    if (!command) return;
 
     try {
         await command.execute(interaction);
     } catch (error) {
-        console.error(`❌ Execution Error [/${interaction.commandName}]:`, error);
+        console.error(`❌ Execution Error:`, error);
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ content: '❌ Internal Error.', ephemeral: true });
         }
@@ -59,5 +55,5 @@ async function start() {
     } catch (err) { console.error("❌ Startup Error:", err); }
 }
 
-client.once('ready', c => console.log(`🚀 ONLINE: ${c.user.tag}`));
+client.once('clientReady', c => console.log(`🚀 ONLINE: ${c.user.tag}`));
 start();
