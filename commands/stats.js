@@ -22,13 +22,16 @@ module.exports = {
         txs.forEach(t => { if(t.item) counts[t.item] = (counts[t.item] || 0) + 1; });
         const favItem = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
         
-        const latestTx = txs[0];
-        const avgUSD = (stats.purchasedUSD || 0) / (stats.countDeals || 1);
-        const lastTs = Math.floor(stats.lastPurchaseDate.getTime() / 1000);
+        // 🚨 RECOVERY LOGIC: This pulls your old "wiped" data if the new fields are empty 🚨
+        const purchasedUSD = stats.purchasedUSD || stats.totalSold || 0;
+        const soldUSD = stats.soldUSD || stats.totalRevenue || 0;
+        const purchasedRobux = stats.purchasedRobux || stats.totalRobux || 0;
+        const soldRobux = stats.soldRobux || 0;
+        const totalDeals = stats.countDeals || stats.countSold || 0;
+        const highestValue = stats.highestDeal || stats.highestSale || 0;
 
-        const lastAmount = latestTx.payment === 'Robux' 
-            ? `<:Epok_Robux:1394440796211515402> ${latestTx.amountRobux.toLocaleString()}` 
-            : `$${latestTx.amountUSD.toFixed(2)}`;
+        const avgUSD = totalDeals > 0 ? (purchasedUSD / totalDeals) : 0;
+        const lastTs = Math.floor(stats.lastPurchaseDate.getTime() / 1000);
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
@@ -37,23 +40,23 @@ module.exports = {
             .setTitle('💼 Comprehensive Financial Overview')
             .addFields(
                 // USD Row
-                { name: '🛒 Total Purchased (USD)', value: `\`$${(stats.purchasedUSD || 0).toFixed(2)}\``, inline: true },
-                { name: '🤝 Total Sold (USD)', value: `\`$${(stats.soldUSD || 0).toFixed(2)}\``, inline: true },
+                { name: '🛒 Total Purchased (USD)', value: `\`$${purchasedUSD.toFixed(2)}\``, inline: true },
+                { name: '🤝 Total Sold (USD)', value: `\`$${soldUSD.toFixed(2)}\``, inline: true },
                 { name: '\u200B', value: '\u200B', inline: true }, // Spacer
                 
                 // Robux Row
-                { name: '🛒 Total Purchased (R$)', value: `<:Epok_Robux:1394440796211515402> \`${(stats.purchasedRobux || 0).toLocaleString()}\``, inline: true },
-                { name: '🤝 Total Sold (R$)', value: `<:Epok_Robux:1394440796211515402> \`${(stats.soldRobux || 0).toLocaleString()}\``, inline: true },
+                { name: '🛒 Total Purchased (R$)', value: `<:Epok_Robux:1394440796211515402> \`${purchasedRobux.toLocaleString()}\``, inline: true },
+                { name: '🤝 Total Sold (R$)', value: `<:Epok_Robux:1394440796211515402> \`${soldRobux.toLocaleString()}\``, inline: true },
                 { name: '\u200B', value: '\u200B', inline: true }, // Spacer
                 
                 // General Stats
-                { name: '📊 Total Deals', value: `\`${stats.countDeals}\` Transactions`, inline: true },
-                { name: '💎 Highest Deal', value: `\`$${(stats.highestDeal || 0).toFixed(2)}\``, inline: true },
+                { name: '📊 Total Deals', value: `\`${totalDeals}\` Transactions`, inline: true },
+                { name: '💎 Highest Deal', value: `\`$${highestValue.toFixed(2)}\``, inline: true },
                 { name: '📈 Average USD Deal', value: `\`$${avgUSD.toFixed(2)}\``, inline: true },
                 
                 // Bottom Details
-                { name: '✨ Favorite Item', value: `📦 **${favItem.toUpperCase()}** (${counts[favItem]} deals)`, inline: false },
-                { name: '🕒 Last Transaction', value: `**Item:** ${latestTx.item.toUpperCase()}\n**Amount:** ${lastAmount}\n**Date:** <t:${lastTs}:f>`, inline: false }
+                { name: '✨ Favorite Item', value: `📦 **${favItem.toUpperCase()}** (${counts[favItem]} deals)`, inline: true },
+                { name: '🕒 Last Transaction', value: `<t:${lastTs}:R>`, inline: true }
             )
             .setFooter({ text: 'Epok\'s Store Advanced Tracking System', iconURL: interaction.guild.iconURL() });
 
