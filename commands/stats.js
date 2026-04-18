@@ -15,30 +15,29 @@ module.exports = {
 
         if (!stats || txs.length === 0) return interaction.editReply(`No records for ${target.username}.`);
 
-        const getFav = (arr, key) => {
-            const counts = {};
-            arr.forEach(t => { if(t[key]) counts[t[key]] = (counts[t[key]] || 0) + 1; });
-            return Object.keys(counts).length > 0 ? Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) : "N/A";
-        };
+        // Frequency-based Favorite Item Logic
+        const counts = {};
+        txs.forEach(t => { if(t.item) counts[t.item] = (counts[t.item] || 0) + 1; });
+        const favItem = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
 
-        const favItem = getFav(txs, 'item');
-        const favPayment = getFav(txs, 'payment');
-        
-        // Discord dynamic timestamps
+        // Robux Conversion (1:1000 Rate)
+        const robuxValue = Math.floor(stats.totalSold * 1000);
+        const avgDealUSD = stats.totalSold / stats.countSold;
+        const avgDealRobux = Math.floor(avgDealUSD * 1000);
+
         const lastTs = Math.floor(stats.lastPurchaseDate.getTime() / 1000);
-        const genTs = Math.floor(Date.now() / 1000);
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle(`💼 Financial Dossier: ${target.username}`)
             .addFields(
-                { name: '📤 Total Sold', value: `$${stats.totalSold.toFixed(2)}`, inline: true },
-                { name: '💎 Highest Deal', value: `$${stats.highestSale.toFixed(2)}`, inline: true },
-                { name: '✨ Favorite Item', value: `📦 ${favItem}`, inline: false },
-                { name: '💳 Preferred Method', value: favPayment, inline: false },
-                { name: '🕒 Last Transaction', value: `**Item:** ${stats.lastPurchaseItem}\n**Date:** <t:${lastTs}:F>`, inline: false }
+                { name: '📤 Total Sales Value', value: `\`$${stats.totalSold.toFixed(2)}\` / \`R$ ${robuxValue.toLocaleString()}\``, inline: false },
+                { name: '📦 Total Items Sold', value: `\`${stats.countSold}\` deals logged`, inline: true },
+                { name: '💎 Highest Deal', value: `\`$${stats.highestSale.toFixed(2)}\``, inline: true },
+                { name: '📊 Average Deal', value: `\`$${avgDealUSD.toFixed(2)}\` / \`R$ ${avgDealRobux.toLocaleString()}\``, inline: false },
+                { name: '✨ Favorite Item', value: `📦 **${favItem}** (${counts[favItem]} times)`, inline: true },
+                { name: '🕒 Last Transaction', value: `<t:${lastTs}:R>`, inline: true }
             )
-            .setFooter({ text: `Generated • ` })
             .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });

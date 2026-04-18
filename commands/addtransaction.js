@@ -10,33 +10,25 @@ module.exports = {
         .addStringOption(o => o.setName('item').setDescription('The item sold').setRequired(true))
         .addStringOption(o => o.setName('payment').setDescription('Select payment method').setRequired(true)
             .addChoices(
-                { name: 'PayPal', value: '<a:Epok_PayPal:1394440794496307280> PayPal' },
-                { name: 'Litecoin (LTC)', value: '<a:Epok_LTC:1397288075826172054> Litecoin (LTC)' },
-                { name: 'Robux', value: '<:Epok_Robux:1394440796211515402> Robux' },
-                { name: 'CashApp', value: '<:Epok_CashApp:1397288071615221872> CashApp' },
-                { name: 'Other (Manual Entry)', value: 'MANUAL' },
+                { name: 'PayPal', value: 'PayPal' },
+                { name: 'Litecoin (LTC)', value: 'Litecoin' },
+                { name: 'Robux', value: 'Robux' },
+                { name: 'Other', value: 'Other' }
             ))
-        .addStringOption(o => o.setName('manual_payment').setDescription('Type method here if you selected "Other"').setRequired(false))
         .addAttachmentOption(o => o.setName('attachment').setDescription('Attach receipt').setRequired(false)),
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         const user = interaction.options.getUser('user');
         const amountUSD = interaction.options.getNumber('amount');
-        const item = interaction.options.getString('item');
-        let payment = interaction.options.getString('payment');
+        const item = interaction.options.getString('item').toLowerCase();
+        const payment = interaction.options.getString('payment');
         
-        // Robux calculation (Example: $1 = 1000 Robux)
-        const robuxRate = 1000;
-        const amountRobux = Math.floor(amountUSD * robuxRate);
-
-        if (payment === 'MANUAL') {
-            payment = interaction.options.getString('manual_payment') || '📝 Other';
-        }
-
+        const robuxValue = Math.floor(amountUSD * 1000);
         const now = new Date();
-        const newTx = await Transaction.create({ userId: user.id, amount: amountUSD, item, payment, date: now });
 
+        // Create Database Entry
+        await Transaction.create({ userId: user.id, amount: amountUSD, item, payment, date: now });
         await UserStats.findOneAndUpdate(
             { userId: user.id }, 
             { 
@@ -51,12 +43,13 @@ module.exports = {
         if (logChannel) {
             const embed = new EmbedBuilder()
                 .setColor(0x2ECC71)
-                .setTitle('📢 New Sale Logged')
+                .setTitle('📢 Sale Logged Successfully')
                 .addFields(
                     { name: '👤 Customer', value: `<@${user.id}>`, inline: true },
-                    { name: '💰 Value', value: `$${amountUSD.toFixed(2)} USD\n<:Epok_Robux:1394440796211515402> ${amountRobux.toLocaleString()} Robux`, inline: true },
-                    { name: '💳 Method', value: payment, inline: true },
-                    { name: '📦 Item', value: item, inline: false }
+                    { name: '📦 Item', value: item, inline: true },
+                    { name: '💰 USD Price', value: `\`$${amountUSD.toFixed(2)}\``, inline: true },
+                    { name: '🪙 Robux Price', value: `\`R$ ${robuxValue.toLocaleString()}\``, inline: true },
+                    { name: '💳 Method', value: payment, inline: true }
                 )
                 .setTimestamp();
 
