@@ -60,8 +60,6 @@ module.exports = {
                 .setFooter({ text: 'Epok\'s Store Tracking System', iconURL: interaction.guild?.iconURL() });
 
             await interaction.editReply({ embeds: [embed] });
-        } catch (err) {
-            console.error(err);
-        }
+        } catch (err) { console.error(err); }
     }
 };

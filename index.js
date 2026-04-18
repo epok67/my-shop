@@ -29,25 +29,21 @@ for (const file of commandFiles) {
     }
 }
 
-// THE HEARTBEAT: This tells us if Discord is even talking to the bot
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
     
-    console.log(`📥 RECEIVED: /${interaction.commandName} from ${interaction.user.tag}`);
+    // HEARTBEAT LOG: If this doesn't show up in Railway, Discord isn't talking to the bot.
+    console.log(`📥 [/${interaction.commandName}] called by ${interaction.user.tag}`);
 
     const command = client.commands.get(interaction.commandName);
-    if (!command) {
-        console.log(`❓ Command /${interaction.commandName} not found.`);
-        return;
-    }
+    if (!command) return;
 
     try {
         await command.execute(interaction);
-        console.log(`📤 EXECUTED: /${interaction.commandName}`);
     } catch (error) {
-        console.error(`❌ CRASH in /${interaction.commandName}:`, error);
+        console.error(`❌ Execution Error:`, error);
         if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: '❌ Internal Execution Error.', ephemeral: true });
+            await interaction.reply({ content: '❌ Internal Error.', ephemeral: true });
         }
     }
 });
@@ -60,8 +56,6 @@ async function start() {
     } catch (err) { console.error("❌ Startup Error:", err); }
 }
 
-// Handling both event names just to be safe
-client.once('ready', c => console.log(`🚀 ONLINE: ${c.user.tag}`));
+// Fixed the deprecation warning by using clientReady
 client.once('clientReady', c => console.log(`🚀 ONLINE: ${c.user.tag}`));
-
 start();
