@@ -15,7 +15,7 @@ module.exports = {
                 .setColor(0xF1C40F)
                 .setTitle('💰 Top Spenders Leaderboard (USD)')
                 .setDescription(top.length > 0 ? top.map((u, i) => `**${i + 1}.** <@${u.userId}> - \`$${u.purchasedUSD.toFixed(2)}\``).join('\n') : 'No data yet.')
-                .setFooter({ text: 'Run /robuxleaderboard to see robux transactions as robux transactions arent listed in the leaderboard (usd)' });
+                .setFooter({ text: '⚠️ Note: Robux transactions are not included in this leaderboard.' });
 
             await interaction.editReply({ embeds: [embed] });
         } catch (err) { console.error(err); }
