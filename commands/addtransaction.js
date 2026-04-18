@@ -27,10 +27,10 @@ module.exports = {
                 { name: 'PayPal', value: 'PayPal' }, { name: 'CashApp', value: 'CashApp' },
                 { name: 'Venmo', value: 'Venmo' }, { name: 'LTC', value: 'LTC' },
                 { name: 'Crypto (ETH/SOL/BTC/USDT)', value: 'Crypto' }, { name: 'Cards', value: 'Cards' },
-                { name: 'Robux', value: 'Robux' }, { name: 'Other (Manual Entry)', value: 'Other' }
+                { name: 'Robux', value: 'Robux' }, { name: 'Other', value: 'Other' }
             ))
         .addStringOption(o => o.setName('manual_other').setDescription('If "Other" is selected, type method here'))
-        .addAttachmentOption(o => o.setName('proof').setDescription('Optional: Attach transaction screenshot')),
+        .addAttachmentOption(o => o.setName('proof').setDescription('Optional: Attach screenshot')),
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });

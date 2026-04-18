@@ -1,57 +1,33 @@
-const fs = require('node:fs');
-const path = require('node:path');
-const { Client, Collection, GatewayIntentBits, Partials } = require('discord.js');
-const mongoose = require('mongoose');
-const { watchLTC } = require('./services/ltcWatcher');
 require('dotenv').config();
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const mongoose = require('mongoose');
 
-const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.DirectMessages, 
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMembers
-    ],
-    partials: [Partials.Channel, Partials.Message] 
-});
-
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('✅ Connected to MongoDB'))
-    .catch(err => console.error('❌ MongoDB Error:', err));
+// ... (Your command loader code here) ...
 
-const foldersPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(foldersPath).filter(file => file.endsWith('.js'));
+async function startBot() {
+    try {
+        // We use a clean URI check because Railway sometimes adds extra characters
+        const uri = process.env.MONGO_URI.trim();
+        
+        console.log("📡 Connecting to MongoDB...");
+        await mongoose.connect(uri);
+        console.log("✅ Database Connected");
 
-for (const file of commandFiles) {
-    const filePath = path.join(foldersPath, file);
-    const command = require(filePath);
-    if ('data' in command && 'execute' in command) {
-        client.commands.set(command.data.name, command);
+        // ONLY login once the database is 100% ready
+        client.login(process.env.DISCORD_TOKEN);
+    } catch (err) {
+        console.error("❌ FATAL: Database connection failed. Bot will not start.");
+        console.error(err.message);
+        process.exit(1);
     }
 }
 
-client.once('ready', () => {
-    console.log(`🚀 Logged in as ${client.user.tag}!`);
-    setInterval(() => watchLTC(client), 60000);
+// Update the event name to 'clientReady' to fix the warning in your logs
+client.once('clientReady', c => {
+    console.log(`🚀 Logged in as ${c.user.tag}!`);
 });
 
-client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        const reply = { content: 'There was an error while executing this command!', ephemeral: true };
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp(reply);
-        } else {
-            await interaction.reply(reply);
-        }
-    }
-});
-
-client.login(process.env.DISCORD_TOKEN);
+startBot();
