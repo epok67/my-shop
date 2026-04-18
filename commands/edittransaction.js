@@ -1,16 +1,14 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { Transaction } = require('../models/Transaction');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('edittransaction')
-        .setDescription('Modify any aspect of an existing order')
+        .setDescription('Modify an order and log changes')
         .addStringOption(o => o.setName('txid').setDescription('The Order ID').setRequired(true))
         .addStringOption(o => o.setName('item').setDescription('Update item name'))
-        .addNumberOption(o => o.setName('amount').setDescription('Update amount (USD or Robux)'))
-        .addStringOption(o => o.setName('payment').setDescription('Update payment method'))
-        .addStringOption(o => o.setName('date').setDescription('Update date (Format: YYYY-MM-DD)'))
-        .addStringOption(o => o.setName('time').setDescription('Update time (Format: HH:MM in UTC)')),
+        .addNumberOption(o => o.setName('amount').setDescription('Update amount'))
+        .addStringOption(o => o.setName('payment').setDescription('Update payment method')),
 
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
@@ -20,37 +18,35 @@ module.exports = {
             const tx = await Transaction.findOne({ transactionId: txId });
             if (!tx) return interaction.editReply("❌ Order ID not found.");
 
-            const newItem = interaction.options.getString('item');
-            const newAmount = interaction.options.getNumber('amount');
-            const newPayment = interaction.options.getString('payment');
-            const newDate = interaction.options.getString('date');
-            const newTime = interaction.options.getString('time');
+            const oldData = { item: tx.item, amt: tx.amountUSD || tx.amountRobux, pay: tx.payment };
+            const newItem = interaction.options.getString('item')?.toUpperCase() || tx.item;
+            const newAmt = interaction.options.getNumber('amount') || oldData.amt;
+            const newPay = interaction.options.getString('payment') || tx.payment;
 
-            const updateData = {};
-            if (newItem) updateData.item = newItem.toUpperCase();
-            if (newPayment) updateData.payment = newPayment;
-            
-            if (newAmount) {
-                if (tx.payment === 'Robux' || newPayment === 'Robux') {
-                    updateData.amountRobux = newAmount;
-                    updateData.amountUSD = 0;
-                } else {
-                    updateData.amountUSD = newAmount;
-                    updateData.amountRobux = 0;
-                }
+            // Apply updates
+            tx.item = newItem;
+            tx.payment = newPay;
+            if (newPay === 'Robux') { tx.amountRobux = newAmt; tx.amountUSD = 0; }
+            else { tx.amountUSD = newAmt; tx.amountRobux = 0; }
+            await tx.save();
+
+            // Log to Sales Channel (Eastern Time)
+            const logChannel = await interaction.client.channels.fetch('1397978290693865512');
+            if (logChannel) {
+                const nowET = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+                const embed = new EmbedBuilder()
+                    .setColor(0xFFA500)
+                    .setTitle(`🛠️ Transaction Edited`)
+                    .addFields(
+                        { name: '🆔 Order ID', value: `\`${txId}\``, inline: false },
+                        { name: '⬅️ Previous', value: `📦 ${oldData.item} | 💰 ${oldData.amt} | 💳 ${oldData.pay}`, inline: false },
+                        { name: '➡️ Updated', value: `📦 ${newItem} | 💰 ${newAmt} | 💳 ${newPay}`, inline: false },
+                        { name: '🕒 Edit Time (ET)', value: `\`${nowET}\``, inline: false }
+                    );
+                await logChannel.send({ content: `:id: **Order ID Edited**\n\`${txId}\``, embeds: [embed] });
             }
 
-            if (newDate || newTime) {
-                const baseDate = newDate || tx.date.toISOString().split('T')[0];
-                const baseTime = newTime || tx.date.toISOString().split('T')[1].substring(0, 5);
-                updateData.date = new Date(`${baseDate}T${baseTime}:00Z`);
-            }
-
-            await Transaction.updateOne({ transactionId: txId }, { $set: updateData });
-            await interaction.editReply(`✅ **Order ${txId}** has been updated. Run \`/rebuildstats\` to sync totals.`);
-        } catch (err) {
-            console.error(err);
-            await interaction.editReply("❌ Failed to edit transaction. Check your date/time format.");
-        }
+            await interaction.editReply("✅ Transaction updated and logged to sales.");
+        } catch (err) { console.error(err); }
     }
 };
